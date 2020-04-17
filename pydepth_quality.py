@@ -23,8 +23,6 @@ if len(sys.argv) < 2:
     print("Usage: ./pydepth_quality.py <pcl file>")
     sys.exit(1)
 
-print("Reading file: "+sys.argv[1])
-
 pcl = o3d.io.read_point_cloud(sys.argv[1])
 if (pcl):
     o3d.visualization.draw_geometries([pcl], window_name='Point cloud visualization', width=800, height=600)
