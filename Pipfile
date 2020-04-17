@@ -9,6 +9,7 @@ verify_ssl = true
 open3d = "*"
 pyrealsense2 = "*"
 opencv-python = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.7"
