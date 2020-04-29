@@ -7,7 +7,8 @@ import cv2
 if __name__ == "__main__":
     pipeline = rs.pipeline()
     config = rs.config()
-    config.enable_stream(rs.stream.depth)
+    config.enable_stream(rs.stream.depth, 424, 240, rs.format.z16)
+
     profile = config.resolve(pipeline)
 
     device = profile.get_device()
