@@ -4,6 +4,23 @@ import numpy as np
 import cv2
 
 
+supported_resolutions = [
+    (1280, 720),
+    (848, 480),
+    (640, 480),
+    (640, 360),
+    (480, 270)
+]
+
+exposures = [6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000]
+laser_powers = [i for i in range(0, 360, 30)]
+
+def capture_depthframe(resolution, exposure, laser_power, depth_preset=1):
+    """
+    TODO: implement and test if it works. Test by either exporting frame metadata, vizualising or sth...
+    Then make a class or sth
+    """
+
 if __name__ == "__main__":
 
     # Initialize realsense stuff
