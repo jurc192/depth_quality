@@ -15,19 +15,53 @@ supported_resolutions = [
 exposures = [6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000]
 laser_powers = [i for i in range(0, 360, 30)]
 
-def capture_depthframe(resolution, exposure, laser_power, depth_preset=1):
-    """
-    TODO: implement and test if it works. Test by either exporting frame metadata, vizualising or sth...
-    Then make a class or sth
-    """
 
-def get_frame_metadata(frame):
-    metadata = {}
-    metadata['resolution (px)'] = f"{frame.get_width()} x {frame.get_height()} px"
-    metadata['autoexposure']  = frame.get_frame_metadata(rs.frame_metadata_value.auto_exposure)
-    metadata['exposure (ms)'] = frame.get_frame_metadata(rs.frame_metadata_value.actual_exposure) # docs say ms, but not really sure
-    metadata['laser power (mW)']  = frame.get_frame_metadata(rs.frame_metadata_value.frame_laser_power)
-    return metadata
+class ParameterExplorer:
+    
+    def __init__(self):
+        self.pipeline = rs.pipeline()
+        self.config   = rs.config()
+
+
+    def capture_depthframe(self, resolution, exposure, laser_power, depth_preset=1):
+        """ Capture a single depth frame with given parameter settings
+        
+        resolution  - (width, height) pixels
+        exposure    - miliseconds
+        laser_power - mW
+        depth_preset- [0,5] Custom, Default, Hand, High Accuracy, High Density, Medium Density
+        
+        Returns pyrealsense2.depth_frame object
+        """
+
+        # Set resolution and check if it's valid
+        self.config.enable_stream(rs.stream.depth, resolution[0], resolution[1])
+        if (self.config.can_resolve(self.pipeline) == False):
+            print("Resolution not supported")
+            return
+        self.sensor = config.resolve(self.pipeline).get_device().first_depth_sensor()
+
+        # Set exposure
+        if (exposure == 0):
+            self.sensor.set_option(rs.option.auto_exposure, True)
+        else:
+            self.sensor.set_option(rs.option.exposure, exposure)
+
+        # Set laser power
+        self.sensor.set_option(rs.option.laser_power, laser_power)
+
+        # Set depth preset
+        self.sensor.set_option(rs.option.visual_preset, depth_preset)
+
+
+    @staticmethod
+    def get_frame_metadata(frame):
+        metadata = {}
+        metadata['resolution (px)'] = f"{frame.get_width()} x {frame.get_height()} px"
+        metadata['autoexposure']  = frame.get_frame_metadata(rs.frame_metadata_value.auto_exposure)
+        metadata['exposure (ms)'] = frame.get_frame_metadata(rs.frame_metadata_value.actual_exposure) # docs say ms, but not really sure
+        metadata['laser power (mW)']  = frame.get_frame_metadata(rs.frame_metadata_value.frame_laser_power)
+        return metadata
 
 
 if __name__ == "__main__":
