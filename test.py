@@ -21,6 +21,15 @@ def capture_depthframe(resolution, exposure, laser_power, depth_preset=1):
     Then make a class or sth
     """
 
+def get_frame_metadata(frame):
+    metadata = {}
+    metadata['resolution (px)'] = f"{frame.get_width()} x {frame.get_height()} px"
+    metadata['autoexposure']  = frame.get_frame_metadata(rs.frame_metadata_value.auto_exposure)
+    metadata['exposure (ms)'] = frame.get_frame_metadata(rs.frame_metadata_value.actual_exposure) # docs say ms, but not really sure
+    metadata['laser power (mW)']  = frame.get_frame_metadata(rs.frame_metadata_value.frame_laser_power)
+    return metadata
+
+
 if __name__ == "__main__":
 
     # Initialize realsense stuff
@@ -43,5 +52,8 @@ if __name__ == "__main__":
 
     frames = pipeline.wait_for_frames()
     depth_frame = frames.get_depth_frame()
+
+    print(get_metadata(depth_frame))
+    
 
 
