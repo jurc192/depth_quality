@@ -3,40 +3,37 @@ import open3d as o3d
 import numpy as np
 import cv2
 
-class ParameterExplorer:
-    
-    def __init__(self):
-        self.pipeline = rs.pipeline()
-        self.config   = rs.config()
+
+def capture_depthframe(width=1280, height=720, exposure=8500, laser_power=240, depth_preset=1):
+
+    pipeline = rs.pipeline()
+    config   = rs.config()
+
+    # Set resolution and check if it's valid
+    config.enable_stream(rs.stream.depth, width, height)
+    if (config.can_resolve(pipeline) == False):
+        print("Resolution not supported")
+        return
+
+    # Enable stream
+    sensor = config.resolve(pipeline).get_device().first_depth_sensor()
+
+    # Set exposure, laser_power and depth_preset
+    if (exposure == 0):
+        sensor.set_option(rs.option.enable_auto_exposure, True)
+    else:
+        sensor.set_option(rs.option.exposure, exposure)
+    sensor.set_option(rs.option.laser_power, laser_power)
+    sensor.set_option(rs.option.visual_preset, depth_preset)
 
 
-    def capture_depthframe(self, width=1280, height=720, exposure=8500, laser_power=240, depth_preset=1):
+    # Get a depth frame
+    pipeline.start(config)
+    frame = pipeline.wait_for_frames().get_depth_frame()
+    pipeline.stop()
+    config.disable_all_streams()
 
-        # Set resolution and check if it's valid
-        self.config.enable_stream(rs.stream.depth, width, height)
-        if (self.config.can_resolve(self.pipeline) == False):
-            print("Resolution not supported")
-            return
-
-        # Enable stream
-        self.sensor = self.config.resolve(self.pipeline).get_device().first_depth_sensor()
-
-        # Set exposure, laser_power and depth_preset
-        if (exposure == 0):
-            self.sensor.set_option(rs.option.enable_auto_exposure, True)
-        else:
-            self.sensor.set_option(rs.option.exposure, exposure)
-        self.sensor.set_option(rs.option.laser_power, laser_power)
-        self.sensor.set_option(rs.option.visual_preset, depth_preset)
-
-
-        # Get a depth frame
-        self.pipeline.start(self.config)
-        frame = self.pipeline.wait_for_frames().get_depth_frame()
-        self.pipeline.stop()
-        self.config.disable_all_streams()
-
-        return frame
+    return frame
 
 
 def get_frame_metadata(frame):
@@ -50,14 +47,14 @@ def get_frame_metadata(frame):
 
 if __name__ == "__main__":
 
-    cam = ParameterExplorer()
+    # cam = ParameterExplorer()
 
-    frame = cam.capture_depthframe()
+    frame = capture_depthframe()
     print(get_frame_metadata(frame))
     
-    frame2 = cam.capture_depthframe(848, 480, 6500, 150, 1)
+    frame2 = capture_depthframe(848, 480, 6500, 150, 1)
     print(get_frame_metadata(frame2))
     
-    frame3 = cam.capture_depthframe(480, 270, 8500, 150, 1)
+    frame3 = capture_depthframe(480, 270, 8500, 150, 1)
     print(get_frame_metadata(frame3))
 
