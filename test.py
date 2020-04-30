@@ -49,11 +49,21 @@ def get_metadata(frame):
 
 if __name__ == "__main__":
 
-    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    for res in resolutions:
-        frame = capture_depthframe(*res)
-        print(get_metadata(frame))
+    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    # for res in resolutions:
+    #     frame = capture_depthframe(*res)
+    #     print(get_metadata(frame))
 
+
+    # for i in range(5):
+    frame = capture_depthframe(exposure=6500, depth_preset=1)
+    print(get_metadata(frame))
+
+    frame = capture_depthframe(exposure=6500, depth_preset=2)
+    print(get_metadata(frame))
+
+    frame = capture_depthframe(exposure=6500, depth_preset=3)
+    print(get_metadata(frame))
 
 
 
