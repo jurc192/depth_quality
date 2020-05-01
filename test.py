@@ -1,8 +1,8 @@
-from time import sleep
 import pyrealsense2 as rs
+import open3d as o3d
 import cv2
 import numpy as np
-import open3d as o3d
+from time import sleep
 
 
 def get_intrinsics(width=1280, height=720):
