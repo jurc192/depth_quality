@@ -5,21 +5,14 @@ import numpy as np
 import open3d as o3d
 
 
-
-def depth_to_pointcloud(depthmap, intrinsics):
-
-    depth_image = o3d.geometry.Image(depthmap)
-    intr = o3d.camera.PinholeCameraIntrinsic(
-        intrinsics.width,
-        intrinsics.height,
-        intrinsics.fx,
-        intrinsics.fy,
-        intrinsics.ppx,
-        intrinsics.ppy
-    )
-    o3ddepth = o3d.geometry.PointCloud.create_from_depth_image(depth_image, intr)
-    return o3ddepth
-
+def get_intrinsics(width=1280, height=720):
+    pipeline = rs.pipeline()
+    config   = rs.config()
+    config.enable_stream(rs.stream.depth, width, height)
+    pipeline.start(config)
+    intrinsics = pipeline.get_active_profile().get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
+    pipeline.stop()
+    return intrinsics
 
 
 def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, depth_preset=1):
@@ -50,11 +43,10 @@ def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, dept
             sleep(0.2)
     frame = pipeline.wait_for_frames().get_depth_frame()
     
-    intrinsics = pipeline.get_active_profile().get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
     config.disable_all_streams()
     pipeline.stop()
 
-    return frame, intrinsics
+    return frame
 
 
 def get_metadata(frame):
@@ -66,6 +58,31 @@ def get_metadata(frame):
     return metadata
 
 
+def save_depth_raw(filename, depthmap):
+    depthmap = np.asanyarray(depthmap.get_data())
+    np.savetxt(filename, depthmap, fmt="%u")
+
+def save_depth_colorized(filename, depthmap):
+    depthmap = np.asanyarray(depthmap.get_data())
+    colorized = cv2.applyColorMap(cv2.convertScaleAbs(depthmap, alpha=0.03), cv2.COLORMAP_JET)
+    cv2.imwrite(filename, colorized)
+
+def save_pointcloud(filename, depthmap, intrinsics):
+    # Convert realsense depthmap and intrinsics into open3d formats
+    depthmap = np.asanyarray(depthmap.get_data())
+    depthmap = o3d.geometry.Image(depthmap)
+    intr = o3d.camera.PinholeCameraIntrinsic(
+        intrinsics.width,
+        intrinsics.height,
+        intrinsics.fx,
+        intrinsics.fy,
+        intrinsics.ppx,
+        intrinsics.ppy
+    )
+    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intr)
+    o3d.io.write_point_cloud(filename, pointcloud)
+
+
 if __name__ == "__main__":
 
     resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
@@ -73,42 +90,32 @@ if __name__ == "__main__":
     # for res in resolutions:
     #     for exposure in range(6500, 9000, 500):
     #         for laserpower in range(150, 300, 60):
-    #             frame = capture_depthframe(*res, exposure, laserpower)
-    #             print(f"na_{res[0]}x{res[1]}_{exposure}_{laserpower}.ply")
-    #             print(get_metadata(frame))
-    #             print()
+                
+    #             depthframe = capture_depthframe(*res, exposure, laserpower)
+    #             intrinsics = get_intrinsics(*res)
+
+    #             filename = f"na_{res[0]}x{res[1]}_{exposure}_{laserpower}"
+    #             save_depth_raw(f"{filename}.raw")
+    #             save_depth_colorized(f"{filename}.png")
+    #             save_pointcloud(f"{filename}.ply")
 
 
-    depth_raw, intr   = capture_depthframe(exposure=9000)
-    depth_raw         = np.asanyarray(depth_raw.get_data())
-    depth_color       = cv2.applyColorMap(cv2.convertScaleAbs(depth_raw, alpha=0.03), cv2.COLORMAP_JET)
+    res = (848, 480)
+    exposure = 9000
+    laserpower = 300
 
-    np.savetxt('testimage.raw', depth_raw, fmt="%u")        # Save raw depth image
-    cv2.imwrite('testimage.png', depth_color)                                        # Save colorized depth image
-    o3d.io.write_point_cloud('testimage.ply', depth_to_pointcloud(depth_raw, intr))  # Save pointcloud
+    print("Init")
+    depthframe = capture_depthframe(*res, exposure, laserpower)
+    print("Depthframe OK")
+    intrinsics = get_intrinsics(*res)
+    print("Intrinsics OK")
+    print(intrinsics)
 
-    # # Save pointcloud
-    # intr = pipeline.get_active_profile().get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
-    # depth_image = o3d.geometry.Image(depth_image)
-    # intr = o3d.camera.PinholeCameraIntrinsic(
-    #     intrinsics.width,
-    #     intrinsics.height,
-    #     intrinsics.fx,
-    #     intrinsics.fy,
-    #     intrinsics.ppx,
-    #     intrinsics.ppy
-    # )
-    # o3ddepth = o3d.geometry.PointCloud.create_from_depth_image(depth_image, intr)
-
-    
-
-    # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    # cv2.imshow('RealSense', depth_raw)
-    # cv2.waitKey(0)
-
-
-
-
-
-
-
+    filename = f"na_{res[0]}x{res[1]}_{exposure}_{laserpower}"
+    print(f"Filename: {filename}")
+    save_depth_raw(f"{filename}.raw", depthframe)
+    print("depth_raw OK")
+    save_depth_colorized(f"{filename}.png", depthframe)
+    print("depth_colorized OK")
+    save_pointcloud(f"{filename}.ply", depthframe, intrinsics)
+    print("pointcloud OK")
