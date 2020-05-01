@@ -1,8 +1,5 @@
-import time
+from time import sleep
 import pyrealsense2 as rs
-import open3d as o3d
-import numpy as np
-import cv2
 
 
 def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, depth_preset=1):
@@ -28,9 +25,9 @@ def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, dept
     # Get a depth frame
     pipeline.start(config)
     if (exposure == 0):         # Stabilize autoeposure, if enabled
-        for _ in range(10):
+        for _ in range(5):
             pipeline.wait_for_frames().get_depth_frame()
-            time.sleep(0.2)
+            sleep(0.2)
     frame = pipeline.wait_for_frames().get_depth_frame()
     pipeline.stop()
     config.disable_all_streams()
@@ -49,21 +46,15 @@ def get_metadata(frame):
 
 if __name__ == "__main__":
 
-    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    # for res in resolutions:
-    #     frame = capture_depthframe(*res)
-    #     print(get_metadata(frame))
+    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    
+    for res in resolutions:
+        for exposure in range(6500, 9000, 500):
+            for laserpower in range(150, 300, 60):
+                frame = capture_depthframe(*res, exposure, laserpower)
+                print(get_metadata(frame))
 
 
-    # for i in range(5):
-    frame = capture_depthframe(exposure=6500, depth_preset=1)
-    print(get_metadata(frame))
-
-    frame = capture_depthframe(exposure=6500, depth_preset=2)
-    print(get_metadata(frame))
-
-    frame = capture_depthframe(exposure=6500, depth_preset=3)
-    print(get_metadata(frame))
 
 
 
