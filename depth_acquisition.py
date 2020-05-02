@@ -1,16 +1,94 @@
 #
 #   depth_acquisition.py
-#   Script that enables collecting depth images at different distances, with variable parameters
+#   Script that enables collecting depth images at different distances with different parameters
+#
+#   Usage: ./depth_acquisition.py
+#   1. Select exposure times that seem reasonable (using 'up/down', 'enter' to add, 'q' to finish)
+#   2. Place the camera at given distance
+#   3. Press ENTER and wait
+#
+#   Warning: might need a USB3 connection (due to a bug in rs firmware)
 #
 
-# 1. Preview and set exposure time
-# 2. For every distance:
-    # - position the camera
-    # - capture images
-    # - save to files
 import pyrealsense2 as rs
+import open3d as o3d
 import cv2
 import numpy as np
+from pathlib import Path
+
+
+def get_intrinsics(width=1280, height=720):
+    pipeline = rs.pipeline()
+    config   = rs.config()
+    config.enable_stream(rs.stream.depth, width, height)
+    pipeline.start(config)
+    intrinsics = pipeline.get_active_profile().get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
+    pipeline.stop()
+    return intrinsics
+
+
+def save_depth_raw(filename, depthmap):
+    depthmap = np.asanyarray(depthmap.get_data())
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(filename, depthmap, fmt="%u")
+
+
+def save_depth_colorized(filename, depthmap):
+    depthmap = np.asanyarray(depthmap.get_data())
+    colorized = cv2.applyColorMap(cv2.convertScaleAbs(depthmap, alpha=0.03), cv2.COLORMAP_JET)
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(filename, colorized)
+
+
+def save_pointcloud(filename, depthmap, intrinsics):
+    # Convert realsense depthmap and intrinsics into open3d formats
+    depthmap = np.asanyarray(depthmap.get_data())
+    depthmap = o3d.geometry.Image(depthmap)
+    intr = o3d.camera.PinholeCameraIntrinsic(
+        intrinsics.width,
+        intrinsics.height,
+        intrinsics.fx,
+        intrinsics.fy,
+        intrinsics.ppx,
+        intrinsics.ppy
+    )
+    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intr)
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    o3d.io.write_point_cloud(filename, pointcloud)
+
+
+def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, depth_preset=1):
+
+    pipeline = rs.pipeline()
+    config   = rs.config()
+    
+    # Enable depth stream with given resolution and get sensor handle (for setting other params)
+    config.enable_stream(rs.stream.depth, width, height)
+    if (config.can_resolve(pipeline) == False):
+        print("Resolution not supported")
+        return
+    sensor = config.resolve(pipeline).get_device().first_depth_sensor()
+
+    # Set remaining parameters
+    if (exposure == 0):
+        sensor.set_option(rs.option.enable_auto_exposure, True)
+    else:
+        sensor.set_option(rs.option.enable_auto_exposure, False)
+        sensor.set_option(rs.option.exposure, exposure)
+    sensor.set_option(rs.option.laser_power, laser_power)
+    sensor.set_option(rs.option.visual_preset, depth_preset)
+
+    # Get a depth frame
+    pipeline.start(config)
+    if (exposure == 0):         # Stabilize autoexposure, if enabled
+        for _ in range(5):
+            pipeline.wait_for_frames().get_depth_frame()
+            sleep(0.2)
+    frame = pipeline.wait_for_frames().get_depth_frame()
+    config.disable_all_streams()
+    pipeline.stop()
+    return frame
+
 
 def exposure_preview():
 
@@ -49,20 +127,21 @@ def exposure_preview():
         
         exposure = depth_frame.get_frame_metadata(rs.frame_metadata_value.actual_exposure)
         key = cv2.waitKey(2)
-        if key == ord('q') or key == 27:    # esc
+        if key == ord('q') or key == 27:                        # ESC or Q (exit)
+            cv2.destroyAllWindows()
             break
 
-        elif key == ord('w'):
+        elif key == ord('w') or key == 82:                      # UP or W (increase exposure)
             exposure = exposure + 2000
             sensor.set_option(rs.option.exposure, exposure)
             print(f"exposure {exposure}")
 
-        elif key == ord('s'):
+        elif key == ord('s') or key == 84:                      # DOWN or S (decrease exposure)
             exposure = exposure - 2000
             sensor.set_option(rs.option.exposure, exposure)
             print(f"exposure {exposure}")
 
-        elif key == 13:     # enter
+        elif key == 13:                                         # ENTER (add to exposure list)
             cv2.destroyAllWindows()
             exposures.append(exposure)
             print(f"Added {exposure} to exposure list")
@@ -73,22 +152,23 @@ def exposure_preview():
 
 if __name__ == "__main__":
     
-    distances   = []
-    resolutions = []
-    laserpowers = []
+    distances   = [10]
+    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    laserpowers = [150, 240, 300]
     exposures   = sorted(set(exposure_preview()))
-    
-    print(f"\nSelected exposures: {exposures}")
+    directoryname = "results"
 
-    # for dist in distances:
-    #     input("Place the camera to distance: {dist}cm")
-    #     for res in resolutions:
-    #         for exp in exposures:
-    #             for lpow in laserpowers:
-    #                 depthframe = capture_depthframe(*res, exposure, laserpower)
-    #                 intrinsics = get_intrinsics(*res)
-    #                 filename = f"{dist}_{res[0]}x{res[1]}_{exposure}_{laserpower}"
-    #                 save_depth_raw(f"{filename}.raw", depthframe)
-    #                 save_depth_colorized(f"{filename}.png", depthframe)
-    #                 save_pointcloud(f"{filename}.ply", depthframe, intrinsics)
-                    
+    print(f"\nSelected exposures: {exposures}\n")
+
+    for dist in distances:
+        input(f"Place the camera to distance: {dist}cm and press Enter")
+        for res in resolutions:
+            for exp in exposures:
+                for lpow in laserpowers:
+                    filename = f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}"
+                    print("\tCapturing frame " + filename)
+                    depthframe = capture_depthframe(*res, exp, lpow)
+                    intrinsics = get_intrinsics(*res)
+                    save_depth_raw(f"{directoryname}/{filename}.raw", depthframe)
+                    save_depth_colorized(f"{directoryname}/{filename}.png", depthframe)
+                    save_pointcloud(f"{directoryname}/{filename}.ply", depthframe, intrinsics)
