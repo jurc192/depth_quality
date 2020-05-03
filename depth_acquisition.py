@@ -86,6 +86,8 @@ def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, dept
             pipeline.wait_for_frames().get_depth_frame()
             sleep(0.2)
     frame = pipeline.wait_for_frames().get_depth_frame()
+    if not depth_frame:        # Skip if needed (this seems redundant)
+        print("no depth frame")
     config.disable_all_streams()
     pipeline.stop()
     return frame
