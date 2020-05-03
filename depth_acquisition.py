@@ -15,6 +15,7 @@ import open3d as o3d
 import cv2
 import numpy as np
 from pathlib import Path
+from time import sleep
 
 
 def get_intrinsics(width=1280, height=720):
@@ -59,16 +60,27 @@ def save_pointcloud(filename, depthmap, intrinsics):
 
 def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, depth_preset=1):
 
+    print("starting pipeline")
     pipeline = rs.pipeline()
+    print("starting config")
     config   = rs.config()
     
     # Enable depth stream with given resolution and get sensor handle (for setting other params)
+    print("enabling stream")
     config.enable_stream(rs.stream.depth, width, height)
     if (config.can_resolve(pipeline) == False):
         print("Resolution not supported")
         return
-    sensor = config.resolve(pipeline).get_device().first_depth_sensor()
+    print("resolving")
+    print(config.can_resolve(pipeline))
+    sensor = config.resolve(pipeline)
+    print("getting device")
+    sensor = sensor.get_device()
+    print("getting depth sensor")
+    sensor = sensor.first_depth_sensor()
+    print("setting first option")
     sensor.set_option(rs.option.depth_units, 0.0001)     # Minimum depth unit (meters)
+    print("set option depth unit, setting others")
 
     # Set remaining parameters
     if (exposure == 0):
@@ -80,15 +92,19 @@ def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, dept
     sensor.set_option(rs.option.visual_preset, depth_preset)
 
     # Get a depth frame
+    print("\tstarting pipeline")
     pipeline.start(config)
     if (exposure == 0):         # Stabilize autoexposure, if enabled
         for _ in range(5):
             pipeline.wait_for_frames().get_depth_frame()
             sleep(0.2)
+    print("\tgrabbing frame")
     frame = pipeline.wait_for_frames().get_depth_frame()
-    if not depth_frame:        # Skip if needed (this seems redundant)
+    if not frame:        # Skip if needed (this seems redundant)
         print("no depth frame")
+    print("\tdisabling streams")
     config.disable_all_streams()
+    print("\tstopping pipeline")
     pipeline.stop()
     return frame
 
@@ -161,7 +177,7 @@ if __name__ == "__main__":
     resolutions = [(1280, 720), (848, 480), (640, 360), (480, 270)]
     laserpowers = [150, 210, 240, 270, 300]
     # exposures   = sorted(set(exposure_preview()))
-    exposures   = [8500, 10500, 12500, 6500]
+    exposures   = [4500, 6500, 8500, 10500, 12500]
     directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
     nframes     = len(resolutions) * len(laserpowers) * len(exposures)
 
@@ -180,9 +196,13 @@ if __name__ == "__main__":
                         continue
                     print(f"\tCapturing frame {n}/{nframes}\t" + filename)
                     depthframe = capture_depthframe(*res, exp, lpow)
+                    print("Getting intrinsics")
                     intrinsics = get_intrinsics(*res)
+                    print("saving raw depth")
                     save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
+                    print("saving colorized depth")
                     save_depth_colorized(f"{directoryname}/png/{filename}.png", depthframe)
+                    print("saving pointcloud")
                     save_pointcloud(f"{directoryname}/ply/{filename}.ply", depthframe, intrinsics)
                     n = n + 1
 
