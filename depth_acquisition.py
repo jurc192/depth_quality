@@ -152,12 +152,15 @@ def exposure_preview():
 
 
 if __name__ == "__main__":
+    import sys
     
-    distances   = [10]
-    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    laserpowers = [150, 240, 300]
-    exposures   = sorted(set(exposure_preview()))
-    directoryname = "results"
+    distances   = [30, 60, 90, 120]
+    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    resolutions = [(1280, 720), (848, 480), (640, 360), (480, 270)]
+    laserpowers = [150, 210, 240, 270, 300]
+    # exposures   = sorted(set(exposure_preview()))
+    exposures   = [8500, 10500, 12500, 6500]
+    directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
     nframes     = len(resolutions) * len(laserpowers) * len(exposures)
 
     print(f"\nSelected exposures: {exposures}\n")
@@ -169,11 +172,15 @@ if __name__ == "__main__":
             for exp in exposures:
                 for lpow in laserpowers:
                     filename = f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}"
+                    if (Path(directoryname+"/raw/"+filename+".raw").is_file()):
+                        print(f"\tFrame {n}/{nframes}\t" + filename + " already exists")
+                        n = n + 1
+                        continue
                     print(f"\tCapturing frame {n}/{nframes}\t" + filename)
                     depthframe = capture_depthframe(*res, exp, lpow)
                     intrinsics = get_intrinsics(*res)
-                    save_depth_raw(f"{directoryname}/{filename}.raw", depthframe)
-                    save_depth_colorized(f"{directoryname}/{filename}.png", depthframe)
-                    save_pointcloud(f"{directoryname}/{filename}.ply", depthframe, intrinsics)
+                    save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
+                    save_depth_colorized(f"{directoryname}/png/{filename}.png", depthframe)
+                    save_pointcloud(f"{directoryname}/ply/{filename}.ply", depthframe, intrinsics)
                     n = n + 1
 
