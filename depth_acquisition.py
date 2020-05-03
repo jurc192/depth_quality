@@ -68,6 +68,7 @@ def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, dept
         print("Resolution not supported")
         return
     sensor = config.resolve(pipeline).get_device().first_depth_sensor()
+    sensor.set_option(rs.option.depth_units, 0.0001)     # Minimum depth unit (meters)
 
     # Set remaining parameters
     if (exposure == 0):
@@ -157,18 +158,22 @@ if __name__ == "__main__":
     laserpowers = [150, 240, 300]
     exposures   = sorted(set(exposure_preview()))
     directoryname = "results"
+    nframes     = len(resolutions) * len(laserpowers) * len(exposures)
 
     print(f"\nSelected exposures: {exposures}\n")
 
     for dist in distances:
         input(f"Place the camera to distance: {dist}cm and press Enter")
+        n = 1
         for res in resolutions:
             for exp in exposures:
                 for lpow in laserpowers:
                     filename = f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}"
-                    print("\tCapturing frame " + filename)
+                    print(f"\tCapturing frame {n}/{nframes}\t" + filename)
                     depthframe = capture_depthframe(*res, exp, lpow)
                     intrinsics = get_intrinsics(*res)
                     save_depth_raw(f"{directoryname}/{filename}.raw", depthframe)
                     save_depth_colorized(f"{directoryname}/{filename}.png", depthframe)
                     save_pointcloud(f"{directoryname}/{filename}.ply", depthframe, intrinsics)
+                    n = n + 1
+
