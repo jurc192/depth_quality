@@ -10,6 +10,7 @@ open3d = "*"
 pyrealsense2 = "*"
 opencv-python = "*"
 numpy = "*"
+scikit-learn = "*"
 
 [requires]
 python_version = "3.7"
