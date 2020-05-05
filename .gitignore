@@ -2,3 +2,4 @@
 *.raw
 *.png
 experiment1/
+!readme_images/*
