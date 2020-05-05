@@ -1,24 +1,22 @@
+#
+#   depth_analysis.py
+#   Script for analyzing planarity of pointclouds (wall scans)
+#
+
+
 import pyrealsense2 as rs
 import open3d as o3d
-import cv2
 import numpy as np
-from pathlib import Path
-import os
 import sys
+from pathlib import Path
 from sklearn import linear_model
-from math import sqrt
-
-
-def rms(errors):
-    return np.sqrt(np.sum((errors**2)) / len(errors))   # forgot sqrt
-
-
-def dist_to_plane(x, y, z, a, b, c, d):
-    return (a*x + b*y + c*z - d) / sqrt(a*a + b*b + c*c)    # this is signed distance
 
 
 def plane_fit_RMSE(points, depth_unit=0.0001):
-    
+    """ Calculate best-fit plane for a given pointcloud and return rmse (in meters)
+        Depth unit is specified in meters, set to smallest value (100um) by default
+    """
+
     # Form the system of equations in matrix form: Aw = z
     A = []
     z = []
@@ -26,23 +24,23 @@ def plane_fit_RMSE(points, depth_unit=0.0001):
         A.append([p[0], p[1], 1])
         z.append(p[2])
     
-    # Perform linear regression
+    # Find best-fit plane using linear regression
     reg = linear_model.LinearRegression()
     reg.fit(A, z)
     a = reg.coef_[0]
     b = reg.coef_[1]
     c = 1
     d = reg.intercept_
-    # print(f"Best fitting plane: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
-    
-    distances = []
-    for p in points:
-        distances.append(dist_to_plane(*p, a, b, c, d))
 
-    return rms(np.array(distances)) * depth_unit
+    distances = np.array([((a*x + b*y + c*z - d) / np.sqrt(a*a + b*b + c*c)) for x,y,z in points])
+    rmse      = np.sqrt(np.sum((distances**2)) / distances.size)
+    return rmse * depth_unit
 
 
 def parse_params(folder):
+    """ Utility function to parse all .ply files in a folder and return lists of used settings
+        Assuming naming convention: distance_resolution_exposure_laserpower.ply
+    """
     distances   = set()
     resolutions = set()
     exposures   = set()
@@ -70,64 +68,27 @@ if __name__ == "__main__":
         print("\t<input_directory>  directory containing .ply files with naming convention:")
         print("\t\tdistance_resolution_exposure_laserpower.ply")
         sys.exit()
-    
+
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-
-    resolutions = ['480x270', '640x360', '848x480', '1280x720']
     
-    res = resolutions[2]
-    exp = 8500
-
-    ## Best settings @ 30cm
-    filename = f"{sys.argv[1]}/30_848x480_8500_150.ply"
-    points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    print(f"RMSE (30 cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-    ## Best settings @ 60 cm
-    filename = f"{sys.argv[1]}/60_848x480_4500_150.ply"
-    points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    print(f"RMSE (60 cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-    ## Best settings @ 90 cm
-    filename = f"{sys.argv[1]}/90_480x270_10500_210.ply"
-    points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    print(f"RMSE (90 cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-    ## Best settings @ 120 cm
-    filename = f"{sys.argv[1]}/120_848x480_4500_270.ply"
-    points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    print(f"RMSE (120 cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
+    # Example usage: observing distance
+    res = resolutions[0]
+    exp = exposures[0]
+    lpow = laserpowers[0]
+    print(f"\nObserving distance using resolution {res}, exposure {exp}, laserpower {lpow} mW")
+    for dist in distances:
+        filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
+        points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
+        print(f"RMSE ({dist} cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
 
 
-
-    # ## Laserpower @best resolution, best exposure
-    # for dist in distances:
-    #     print(f"\ndistance {dist}\t resolution {res}\texposure {exp}")
-    #     for lpow in laserpowers:
-    #         filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
-    #         points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    #         print(f"RMSE ({lpow}):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-
-
-
-    # ## Exposure @best resolution, default laserpower
-    # for dist in distances:
-    #     print(f"\ndistance {dist}\t resolution {res}\tlpower {lpow}")
-    #     for exp in exposures:
-    #         filename = f"{sys.argv[1]}/{dist}_{resolutions[3]}_{exp}_{lpow}.ply"
-    #         points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    #         print(f"RMSE ({exp}):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-
-    # ## Resolution
-    # for res in resolutions:
-    #     print(f"\nresolution {res}\texposure {exp}\tlpow {lpow}")
-    #     for dist in distances:
-    #         filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
-    #         points = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    #         print(f"RMSE ({dist}):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
-
-    # points = np.asanyarray(o3d.io.read_point_cloud(sys.argv[1]).points)
-    # print(f"RMSE: {plane_fit_RMSE(points)} m")
+    # Example usage: observing laser power
+    dist = "30"
+    res = "848x480"
+    exp = "8500"
+    print(f"\nObserving laser power at distance {dist}cm, resolution {res}, exposure {exp}")
+    for lpow in laserpowers:
+        filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
+        points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
+        print(f"RMSE ({lpow} mW):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
 
