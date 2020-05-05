@@ -25,7 +25,7 @@ Use `def capture_depthmap(width=1280, height=720, exposure=8500, laser_power=240
 | **Exposure** (??*)     | 1    | 165000 | 8500    |
 | **Laser power** (mW**) | 0    | 360    | 240     |
 
-*documentation says $ms$ but the implementation looks more like $\mu s$ 
+*documentation says *ms* but the implementation/numbers looks more like *us*
 **steps of 30mW 
 
 
@@ -48,17 +48,17 @@ Use `def capture_depthmap(width=1280, height=720, exposure=8500, laser_power=240
 Use `plane_fit_RMSE(points, depth_unit=0.0001)` to calculate RMSE of a given `pointcloud` in meters. Depth unit is set to smallest possible value (0.0001 m), but can be changed if pointcloud was captured using different settings.
 
 **Best-fit plane** is calculated using [Linear Regression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html#sklearn.linear_model.LinearRegression) from scikit learn [library](https://scikit-learn.org/stable/modules/linear_model.html#ordinary-least-squares). 
-**Signed distances** to a plane are calculated using:
-$$
-d = \frac{Ax + By + Cz - D}{\sqrt{A^2 + B^2 + C^2}}
-$$
-**Root-mean square errors** are calculated using:
-$$
-RMSE = \frac{\sum_{n=1}^{N} signed\_distance^2}{N}
-$$
 
+**Signed distances** to a plane are calculated using:
+
+![](readme_images/distancetoplane.png)
+
+**Root-mean square errors** are calculated using:
+
+![](readme_images/rmse.png)
 
 Utility function `parse_params` and examples in the script assume naming convention of `.ply` files:
 `distance_resolution_exposure_laserpower.ply`
 
 Example dataset can be found [here](https://drive.google.com/open?id=1PRAM1WC2O3LjU8KLo7OZq_YXtz5iKds1) (captures of a wall at different distances)
+
