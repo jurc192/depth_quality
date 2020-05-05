@@ -1,6 +1,6 @@
 #
 #   depth_acquisition.py
-#   Script that enables collecting depth images at different distances with different parameters
+#   Script for collecting depth images using different parameter settings
 #
 #   Usage: ./depth_acquisition.py
 #   1. Select exposure times that seem reasonable (using 'up/down', 'enter' to add, 'q' to finish)
@@ -9,7 +9,6 @@
 #
 #   Warning: might need a USB3 connection (due to a bug in rs firmware)
 #
-
 import pyrealsense2 as rs
 import open3d as o3d
 import cv2
@@ -58,58 +57,39 @@ def save_pointcloud(filename, depthmap, intrinsics):
     o3d.io.write_point_cloud(filename, pointcloud)
 
 
-def capture_depthframe(width=1280, height=720, exposure=0, laser_power=240, depth_preset=1):
+def capture_depthmap(width=1280, height=720, exposure=8500, laser_power=240, depth_preset=1):
 
-    print("starting pipeline")
     pipeline = rs.pipeline()
-    print("starting config")
     config   = rs.config()
     
-    # Enable depth stream with given resolution and get sensor handle (for setting other params)
-    print("enabling stream")
+    # Enable depth stream with given resolution
     config.enable_stream(rs.stream.depth, width, height)
     if (config.can_resolve(pipeline) == False):
         print("Resolution not supported")
         return
-    print("resolving")
-    print(config.can_resolve(pipeline))
-    sensor = config.resolve(pipeline)
-    print("getting device")
-    sensor = sensor.get_device()
-    print("getting depth sensor")
-    sensor = sensor.first_depth_sensor()
-    print("setting first option")
-    sensor.set_option(rs.option.depth_units, 0.0001)     # Minimum depth unit (meters)
-    print("set option depth unit, setting others")
 
-    # Set remaining parameters
-    if (exposure == 0):
-        sensor.set_option(rs.option.enable_auto_exposure, True)
-    else:
-        sensor.set_option(rs.option.enable_auto_exposure, False)
-        sensor.set_option(rs.option.exposure, exposure)
+    # Set parameters
+    sensor = config.resolve(pipeline).get_device().first_depth_sensor()
+    sensor.set_option(rs.option.depth_units, 0.0001)     # Smallest depth unit (in meters)
+    sensor.set_option(rs.option.enable_auto_exposure, False)
+    sensor.set_option(rs.option.exposure, exposure)
     sensor.set_option(rs.option.laser_power, laser_power)
     sensor.set_option(rs.option.visual_preset, depth_preset)
 
     # Get a depth frame
-    print("\tstarting pipeline")
     pipeline.start(config)
-    if (exposure == 0):         # Stabilize autoexposure, if enabled
-        for _ in range(5):
-            pipeline.wait_for_frames().get_depth_frame()
-            sleep(0.2)
-    print("\tgrabbing frame")
     frame = pipeline.wait_for_frames().get_depth_frame()
-    if not frame:        # Skip if needed (this seems redundant)
-        print("no depth frame")
-    print("\tdisabling streams")
     config.disable_all_streams()
-    print("\tstopping pipeline")
     pipeline.stop()
     return frame
 
 
 def exposure_preview():
+    """ Opens a window for previewing video streams (color, depth, IR).
+        Select desired exposure time(s) with arrow keys and pres enter to add to a list. 
+        Press Q to exit, when finished.
+        Returns a list of selected exposure times
+    """
 
     exposures = []
     pipeline = rs.pipeline()
@@ -173,15 +153,12 @@ if __name__ == "__main__":
     import sys
     
     distances   = [30, 60, 90, 120]
-    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    resolutions = [(1280, 720), (848, 480), (640, 360), (480, 270)]
+    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
     laserpowers = [150, 210, 240, 270, 300]
-    # exposures   = sorted(set(exposure_preview()))
-    exposures   = [4500, 6500, 8500, 10500, 12500]
+    exposures   = sorted(set(exposure_preview()))
+
     directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
     nframes     = len(resolutions) * len(laserpowers) * len(exposures)
-
-    print(f"\nSelected exposures: {exposures}\n")
 
     for dist in distances:
         input(f"Place the camera to distance: {dist}cm and press Enter")
@@ -190,19 +167,14 @@ if __name__ == "__main__":
             for exp in exposures:
                 for lpow in laserpowers:
                     filename = f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}"
-                    if (Path(directoryname+"/raw/"+filename+".raw").is_file()):
+                    if (Path(directoryname+"/raw/"+filename+".raw").is_file()):     # skip file if it exists
                         print(f"\tFrame {n}/{nframes}\t" + filename + " already exists")
                         n = n + 1
                         continue
                     print(f"\tCapturing frame {n}/{nframes}\t" + filename)
-                    depthframe = capture_depthframe(*res, exp, lpow)
-                    print("Getting intrinsics")
+                    depthframe = capture_depthmap(*res, exp, lpow)
                     intrinsics = get_intrinsics(*res)
-                    print("saving raw depth")
-                    save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
-                    print("saving colorized depth")
-                    save_depth_colorized(f"{directoryname}/png/{filename}.png", depthframe)
-                    print("saving pointcloud")
                     save_pointcloud(f"{directoryname}/ply/{filename}.ply", depthframe, intrinsics)
+                    save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
+                    save_depth_colorized(f"{directoryname}/png/{filename}.png", depthframe)
                     n = n + 1
-
