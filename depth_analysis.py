@@ -10,11 +10,11 @@ from math import sqrt
 
 
 def rms(errors):
-    return np.sum((errors**2)) / len(errors)
+    return np.sqrt(np.sum((errors**2)) / len(errors))   # forgot sqrt
 
 
 def dist_to_plane(x, y, z, a, b, c, d):
-    return (a*x + b*y + c*z - d) / sqrt(a*a + b*b + c*c)
+    return (a*x + b*y + c*z - d) / sqrt(a*a + b*b + c*c)    # this is signed distance
 
 
 def plane_fit_RMSE(points, depth_unit=0.0001):
