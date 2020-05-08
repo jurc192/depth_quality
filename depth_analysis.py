@@ -68,10 +68,11 @@ def centered_crop(image, percents):
     roih = int(percents/100 * height)
 
     x,y = ((width-roiw)//2 , (height-roih)//2)
-    return image[y:y+roih , x:x+roiw]
+    image[y:y+roih , x:x+roiw] = 1
+    # return image[y:y+roih , x:x+roiw]
 
 
-def depth_to_pointcloud(depthmap, roi=100):
+def depth_to_pointcloud(depthmap):
 
     # Get intrinsics
     # Hardcoded values for RealSense D435i camera, using video_stream_profile.get_intrinsics() function
@@ -92,8 +93,8 @@ def depth_to_pointcloud(depthmap, roi=100):
     intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
     print(intrinsics)
 
-    # Crop depthmap and convert to o3d format
-    depthmap   = o3d.geometry.Image(centered_crop(depthmap, roi))
+    # Convert to o3d format
+    depthmap   = o3d.geometry.Image(depthmap)
     pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
     print(intrinsics.intrinsic_matrix)
     return pointcloud
@@ -110,50 +111,34 @@ if __name__ == "__main__":
 
     # Parse raw file
     depthmap_raw = np.loadtxt(sys.argv[1], dtype='uint16')
+    pointcloud = depth_to_pointcloud(depthmap_raw)
+    o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
 
-    roi = 100
-    while roi > 20:
+    # Create a mask
+    mask = np.zeros(depthmap_raw.shape, dtype='uint16')
+    percents = 65
+    height, width = mask.shape[:2]
+    roiw = int(percents/100 * width)
+    roih = int(percents/100 * height)
+    x,y = ((width-roiw)//2 , (height-roih)//2)
+    mask[y:y+roih , x:x+roiw] = 1
 
-        # Create and display a pointcloud
-        pointcloud = depth_to_pointcloud(depthmap_raw, roi)
-        o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
-        roi = roi - 10
+    # Apply mask to depthmap
+    cropped = mask * depthmap_raw
+    print(cropped.dtype)
+    print(mask.dtype)
+    print(depthmap_raw.dtype)
+    print(cropped)
+    print(cropped[300:400, 600:700])
+    print(cropped.shape)
 
-        # o3d.visualization.draw_geometries([], width=800, height=600)
+    pointcloud = depth_to_pointcloud(cropped)
+    o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
 
-    # # Calculate width and height of the ROI
-    # percents = 50
-    # height, width = rawdata.shape
-    # roiw     = int(percents/100 * width)
-    # roih     = int(percents/100 * height)
-    
-    # tl = ((width-roiw)//2 , (height-roih)//2)
-    # tb = ((width+roiw)//2 , (height+roih)//2)
-
-    # cropped = rawdata[tl:tl+roih, 200:200+500]
-    # colorized = cv2.rectangle(colorized, tl, tb, (255, 255, 255), 3)
-
+    # # Display
+    # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(cropped, alpha=0.03), cv2.COLORMAP_JET)
     # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    # cv2.imshow('RealSense', colorized)
+    # cv2.imshow('RealSense', depth_colormap)
     # cv2.waitKey(0)
 
-
-
-    # if len(sys.argv) < 2:
-    #     print("Usage: ./depth_analysis.py <input_directory>")
-    #     print("\t<input_directory>  directory containing .ply files with naming convention:")
-    #     print("\t\tdistance_resolution_exposure_laserpower.ply")
-    #     sys.exit()
-
-    # distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-    
-    # # Example usage: observing distance
-    # res = resolutions[0]
-    # exp = exposures[0]
-    # lpow = laserpowers[0]
-    # print(f"\nObserving distance using resolution {res}, exposure {exp}, laserpower {lpow} mW")
-    # for dist in distances:
-    #     filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
-    #     points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-    #     print(f"RMSE ({dist} cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
 
