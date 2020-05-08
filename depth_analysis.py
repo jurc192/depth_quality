@@ -90,6 +90,7 @@ def depth_to_pointcloud(depthmap, intrinsics):
     depthmap   = o3d.geometry.Image(depthmap)     # Convert to o3d depthmap
     intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
     pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
+    print(intrinsics)
     return o3ddepth
 
 
@@ -97,16 +98,26 @@ if __name__ == "__main__":
 
     import cv2
 
+    if len(sys.argv) < 2:
+        print("Usage: ./depth_analysis.py <input_file.raw>")
+        sys.exit()
+
     # Parse raw file
-    rawdata = np.loadtxt('experiment1/raw/90_1280x720_8500_150.raw', dtype='uint16')
+    rawdata = np.loadtxt(sys.argv[1], dtype='uint16')
+
+    # Show original file
     colorized = cv2.applyColorMap(cv2.convertScaleAbs(rawdata, alpha=0.03), cv2.COLORMAP_JET)
+    
     cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
     cv2.imshow('RealSense', colorized)
     cv2.waitKey(0)
-    roiimage = centered_crop(colorized, 50)
+    
+    # Show cropped one
+    roiimage = centered_crop(colorized, 63)
     print(roiimage.shape)
     cv2.imshow('RealSense', roiimage)
     cv2.waitKey(0)
+    sys.exit(0)
 
 
     # # Calculate width and height of the ROI
