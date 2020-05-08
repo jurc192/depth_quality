@@ -71,11 +71,11 @@ def centered_crop(image, percents):
     return image[y:y+roih , x:x+roiw]
 
 
-def depth_to_pointcloud(depthmap, intrinsics):
+def depth_to_pointcloud(depthmap, roi=100):
 
-    height, width = depthmap.shape[:2]
     # Get intrinsics
     # Hardcoded values for RealSense D435i camera, using video_stream_profile.get_intrinsics() function
+    height, width = depthmap.shape[:2]
     if (height, width) == (720, 1280):
         fx, fy, ppx, ppy = 635.201, 635.201, 639.165, 366.071
     elif (height, width) == (480, 848):
@@ -86,12 +86,18 @@ def depth_to_pointcloud(depthmap, intrinsics):
         fx, fy, ppx, ppy = 317.601, 317.601, 319.583, 183.036
     elif (height, width) == (270, 480):
         fx, fy, ppx, ppy = 238.201, 238.201, 239.687, 137.277
-
-    depthmap   = o3d.geometry.Image(depthmap)     # Convert to o3d depthmap
+    else:
+        print(f"Wrong depthmap resolution: {width} x {height}")
+        return 0
     intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
-    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
     print(intrinsics)
-    return o3ddepth
+
+    # Crop depthmap and convert to o3d format
+    depthmap   = o3d.geometry.Image(centered_crop(depthmap, roi))
+    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
+    print(intrinsics.intrinsic_matrix)
+    return pointcloud
+
 
 
 if __name__ == "__main__":
@@ -103,22 +109,17 @@ if __name__ == "__main__":
         sys.exit()
 
     # Parse raw file
-    rawdata = np.loadtxt(sys.argv[1], dtype='uint16')
+    depthmap_raw = np.loadtxt(sys.argv[1], dtype='uint16')
 
-    # Show original file
-    colorized = cv2.applyColorMap(cv2.convertScaleAbs(rawdata, alpha=0.03), cv2.COLORMAP_JET)
-    
-    cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    cv2.imshow('RealSense', colorized)
-    cv2.waitKey(0)
-    
-    # Show cropped one
-    roiimage = centered_crop(colorized, 63)
-    print(roiimage.shape)
-    cv2.imshow('RealSense', roiimage)
-    cv2.waitKey(0)
-    sys.exit(0)
+    roi = 100
+    while roi > 20:
 
+        # Create and display a pointcloud
+        pointcloud = depth_to_pointcloud(depthmap_raw, roi)
+        o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+        roi = roi - 10
+
+        # o3d.visualization.draw_geometries([], width=800, height=600)
 
     # # Calculate width and height of the ROI
     # percents = 50
