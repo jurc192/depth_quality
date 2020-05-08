@@ -68,18 +68,20 @@ if __name__ == "__main__":
     # Parse raw file
     rawdata = np.loadtxt('experiment1/raw/90_1280x720_8500_150.raw', dtype='uint16')
     colorized = cv2.applyColorMap(cv2.convertScaleAbs(rawdata, alpha=0.03), cv2.COLORMAP_JET)
-    colorized_original = cv2.imread("experiment1/png/90_1280x720_8500_150.png")
+    
+    # Calculate width and height of the ROI
+    percents = 50
+    height, width = rawdata.shape
+    roiw     = int(percents/100 * width)
+    roih     = int(percents/100 * height)
+    
+    tl = ((width-roiw)//2 , (height-roih)//2)
+    tb = ((width+roiw)//2 , (height+roih)//2)
 
-    # resize images
-    width = int(colorized.shape[1] * 50 / 100)
-    height = int(colorized.shape[0] * 50 / 100)
-    dim = (width, height)
-    colorized = cv2.resize(colorized, dim, interpolation = cv2.INTER_AREA) 
-    colorized_original = cv2.resize(colorized_original, dim, interpolation = cv2.INTER_AREA) 
+    # cropped = rawdata[tl:tl+roih, 200:200+500]
+    colorized = cv2.rectangle(colorized, tl, tb, (255, 255, 255), 3)
 
-
-    combined = np.hstack((colorized, colorized_original))
     cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    cv2.imshow('RealSense', combined)
+    cv2.imshow('RealSense', colorized)
     cv2.waitKey(0)
 
