@@ -63,32 +63,23 @@ def parse_params(folder):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print("Usage: ./depth_analysis.py <input_directory>")
-        print("\t<input_directory>  directory containing .ply files with naming convention:")
-        print("\t\tdistance_resolution_exposure_laserpower.ply")
-        sys.exit()
+    import cv2
 
-    distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-    
-    # Example usage: observing distance
-    res = resolutions[0]
-    exp = exposures[0]
-    lpow = laserpowers[0]
-    print(f"\nObserving distance using resolution {res}, exposure {exp}, laserpower {lpow} mW")
-    for dist in distances:
-        filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
-        points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-        print(f"RMSE ({dist} cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
+    # Parse raw file
+    rawdata = np.loadtxt('experiment1/raw/90_1280x720_8500_150.raw', dtype='uint16')
+    colorized = cv2.applyColorMap(cv2.convertScaleAbs(rawdata, alpha=0.03), cv2.COLORMAP_JET)
+    colorized_original = cv2.imread("experiment1/png/90_1280x720_8500_150.png")
+
+    # resize images
+    width = int(colorized.shape[1] * 50 / 100)
+    height = int(colorized.shape[0] * 50 / 100)
+    dim = (width, height)
+    colorized = cv2.resize(colorized, dim, interpolation = cv2.INTER_AREA) 
+    colorized_original = cv2.resize(colorized_original, dim, interpolation = cv2.INTER_AREA) 
 
 
-    # Example usage: observing laser power
-    dist = "30"
-    res = "848x480"
-    exp = "8500"
-    print(f"\nObserving laser power at distance {dist}cm, resolution {res}, exposure {exp}")
-    for lpow in laserpowers:
-        filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
-        points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
-        print(f"RMSE ({lpow} mW):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
+    combined = np.hstack((colorized, colorized_original))
+    cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+    cv2.imshow('RealSense', combined)
+    cv2.waitKey(0)
 
