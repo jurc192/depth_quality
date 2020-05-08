@@ -3,7 +3,6 @@
 #   Script for analyzing planarity of pointclouds (wall scans)
 #
 
-
 import pyrealsense2 as rs
 import open3d as o3d
 import numpy as np
@@ -61,6 +60,18 @@ def parse_params(folder):
     )
 
 
+    def centered_roi(image, percentage):
+        """ Return a cropped image, with percentage of its width """
+
+        height, width = image.shape[:2]
+        roiw = int(percents/100 * width)
+        roih = int(percents/100 * height)
+
+        x,y = ((width-roiw)//2 , (height-roih)//2)
+        return image[y:y+roih , x:roiw]
+
+
+
 if __name__ == "__main__":
 
     import cv2
@@ -68,20 +79,30 @@ if __name__ == "__main__":
     # Parse raw file
     rawdata = np.loadtxt('experiment1/raw/90_1280x720_8500_150.raw', dtype='uint16')
     colorized = cv2.applyColorMap(cv2.convertScaleAbs(rawdata, alpha=0.03), cv2.COLORMAP_JET)
-    
-    # Calculate width and height of the ROI
-    percents = 50
-    height, width = rawdata.shape
-    roiw     = int(percents/100 * width)
-    roih     = int(percents/100 * height)
-    
-    tl = ((width-roiw)//2 , (height-roih)//2)
-    tb = ((width+roiw)//2 , (height+roih)//2)
-
-    # cropped = rawdata[tl:tl+roih, 200:200+500]
-    colorized = cv2.rectangle(colorized, tl, tb, (255, 255, 255), 3)
-
     cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
     cv2.imshow('RealSense', colorized)
     cv2.waitKey(0)
+    roiimage = centered_roi(colorized, 52)
+    print(roiimage)
+    cv2.imshow('RealSense', roiimage)
+    cv2.waitKey(0)
+
+
+    # # Calculate width and height of the ROI
+    # percents = 50
+    # height, width = rawdata.shape
+    # roiw     = int(percents/100 * width)
+    # roih     = int(percents/100 * height)
+    
+    # tl = ((width-roiw)//2 , (height-roih)//2)
+    # tb = ((width+roiw)//2 , (height+roih)//2)
+
+    # cropped = rawdata[tl:tl+roih, 200:200+500]
+    # colorized = cv2.rectangle(colorized, tl, tb, (255, 255, 255), 3)
+
+    # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+    # cv2.imshow('RealSense', colorized)
+    # cv2.waitKey(0)
+
+
 
