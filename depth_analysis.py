@@ -3,7 +3,7 @@
 #   Script for analyzing planarity of pointclouds (wall scans)
 #
 
-import pyrealsense2 as rs
+# import pyrealsense2 as rs
 import open3d as o3d
 import numpy as np
 import sys
@@ -60,16 +60,37 @@ def parse_params(folder):
     )
 
 
-    def centered_roi(image, percentage):
-        """ Return a cropped image, with percentage of its width """
+def centered_crop(image, percents):
+    """ Return a cropped image, centre aligned, percentage or original size (width) """
 
-        height, width = image.shape[:2]
-        roiw = int(percents/100 * width)
-        roih = int(percents/100 * height)
+    height, width = image.shape[:2]
+    roiw = int(percents/100 * width)
+    roih = int(percents/100 * height)
 
-        x,y = ((width-roiw)//2 , (height-roih)//2)
-        return image[y:y+roih , x:roiw]
+    x,y = ((width-roiw)//2 , (height-roih)//2)
+    return image[y:y+roih , x:x+roiw]
 
+
+def depth_to_pointcloud(depthmap, intrinsics):
+
+    height, width = depthmap.shape[:2]
+    # Get intrinsics
+    # Hardcoded values for RealSense D435i camera, using video_stream_profile.get_intrinsics() function
+    if (height, width) == (720, 1280):
+        fx, fy, ppx, ppy = 635.201, 635.201, 639.165, 366.071
+    elif (height, width) == (480, 848):
+        fx, fy, ppx, ppy = 420.821, 420.821, 423.447, 244.022
+    elif (height, width) == (480, 640):
+        fx, fy, ppx, ppy = 381.121, 381.121, 319.499, 243.643
+    elif (height, width) == (360, 640):
+        fx, fy, ppx, ppy = 317.601, 317.601, 319.583, 183.036
+    elif (height, width) == (270, 480):
+        fx, fy, ppx, ppy = 238.201, 238.201, 239.687, 137.277
+
+    depthmap   = o3d.geometry.Image(depthmap)     # Convert to o3d depthmap
+    intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
+    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
+    return o3ddepth
 
 
 if __name__ == "__main__":
@@ -82,8 +103,8 @@ if __name__ == "__main__":
     cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
     cv2.imshow('RealSense', colorized)
     cv2.waitKey(0)
-    roiimage = centered_roi(colorized, 52)
-    print(roiimage)
+    roiimage = centered_crop(colorized, 50)
+    print(roiimage.shape)
     cv2.imshow('RealSense', roiimage)
     cv2.waitKey(0)
 
@@ -105,4 +126,22 @@ if __name__ == "__main__":
     # cv2.waitKey(0)
 
 
+
+    # if len(sys.argv) < 2:
+    #     print("Usage: ./depth_analysis.py <input_directory>")
+    #     print("\t<input_directory>  directory containing .ply files with naming convention:")
+    #     print("\t\tdistance_resolution_exposure_laserpower.ply")
+    #     sys.exit()
+
+    # distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
+    
+    # # Example usage: observing distance
+    # res = resolutions[0]
+    # exp = exposures[0]
+    # lpow = laserpowers[0]
+    # print(f"\nObserving distance using resolution {res}, exposure {exp}, laserpower {lpow} mW")
+    # for dist in distances:
+    #     filename = f"{sys.argv[1]}/{dist}_{res}_{exp}_{lpow}.ply"
+    #     points  = np.asanyarray(o3d.io.read_point_cloud(filename).points)
+    #     print(f"RMSE ({dist} cm):\t{plane_fit_RMSE(points) * 1000:.6f} mm")
 
