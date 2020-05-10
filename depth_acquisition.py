@@ -152,9 +152,9 @@ def exposure_preview():
 if __name__ == "__main__":
     import sys
     
-    distances   = [30, 60, 90, 120]
+    distances   = [20, 30, 40, 50, 60, 70, 80]
     resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    laserpowers = [150, 210, 240, 270, 300]
+    laserpowers = [150, 180, 210, 240]
     exposures   = sorted(set(exposure_preview()))
 
     directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
@@ -162,6 +162,7 @@ if __name__ == "__main__":
 
     for dist in distances:
         input(f"Place the camera to distance: {dist}cm and press Enter")
+        exposure_preview()
         n = 1
         for res in resolutions:
             for exp in exposures:
