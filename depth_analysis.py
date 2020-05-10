@@ -36,6 +36,42 @@ def plane_fit_RMSE(points, depth_unit=0.0001):
     return rmse * depth_unit
 
 
+def depth_to_pointcloud(depthmap, roi=100):
+    """ Convert depthmap (uint16) into a point cloud. ROI -> percentage of original size """
+
+    # Get intrinsics
+    # Hardcoded values for RealSense D435i camera, using video_stream_profile.get_intrinsics() function
+    height, width = depthmap.shape[:2]
+    if (height, width) == (720, 1280):
+        fx, fy, ppx, ppy = 635.201, 635.201, 639.165, 366.071
+    elif (height, width) == (480, 848):
+        fx, fy, ppx, ppy = 420.821, 420.821, 423.447, 244.022
+    elif (height, width) == (480, 640):
+        fx, fy, ppx, ppy = 381.121, 381.121, 319.499, 243.643
+    elif (height, width) == (360, 640):
+        fx, fy, ppx, ppy = 317.601, 317.601, 319.583, 183.036
+    elif (height, width) == (270, 480):
+        fx, fy, ppx, ppy = 238.201, 238.201, 239.687, 137.277
+    else:
+        print(f"Wrong depthmap resolution: {width} x {height}")
+        return 0
+    intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
+
+    # Crop depthmap
+    if roi < 100:
+        mask = np.zeros(depthmap_raw.shape, dtype='uint16')
+        height, width = mask.shape[:2]
+        roih, roiw = int(roi/100 * height), int(roi/100 * width)
+        x,y = ((width-roiw)//2 , (height-roih)//2)  # Top-left point of ROI
+        mask[y:y+roih , x:x+roiw] = 1
+        depthmap = mask * depthmap_raw               # Apply mask to the depthmap
+
+    # Convert to o3d format
+    depthmap   = o3d.geometry.Image(depthmap)
+    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
+    return pointcloud
+
+
 def parse_params(folder):
     """ Utility function to parse all .ply files in a folder and return lists of used settings
         Assuming naming convention: distance_resolution_exposure_laserpower.ply
@@ -60,47 +96,6 @@ def parse_params(folder):
     )
 
 
-def centered_crop(image, percents):
-    """ Return a cropped image, centre aligned, percentage or original size (width) """
-
-    height, width = image.shape[:2]
-    roiw = int(percents/100 * width)
-    roih = int(percents/100 * height)
-
-    x,y = ((width-roiw)//2 , (height-roih)//2)
-    image[y:y+roih , x:x+roiw] = 1
-    # return image[y:y+roih , x:x+roiw]
-
-
-def depth_to_pointcloud(depthmap):
-
-    # Get intrinsics
-    # Hardcoded values for RealSense D435i camera, using video_stream_profile.get_intrinsics() function
-    height, width = depthmap.shape[:2]
-    if (height, width) == (720, 1280):
-        fx, fy, ppx, ppy = 635.201, 635.201, 639.165, 366.071
-    elif (height, width) == (480, 848):
-        fx, fy, ppx, ppy = 420.821, 420.821, 423.447, 244.022
-    elif (height, width) == (480, 640):
-        fx, fy, ppx, ppy = 381.121, 381.121, 319.499, 243.643
-    elif (height, width) == (360, 640):
-        fx, fy, ppx, ppy = 317.601, 317.601, 319.583, 183.036
-    elif (height, width) == (270, 480):
-        fx, fy, ppx, ppy = 238.201, 238.201, 239.687, 137.277
-    else:
-        print(f"Wrong depthmap resolution: {width} x {height}")
-        return 0
-    intrinsics = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, ppx,ppy)
-    print(intrinsics)
-
-    # Convert to o3d format
-    depthmap   = o3d.geometry.Image(depthmap)
-    pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
-    print(intrinsics.intrinsic_matrix)
-    return pointcloud
-
-
-
 if __name__ == "__main__":
 
     import cv2
@@ -114,25 +109,8 @@ if __name__ == "__main__":
     pointcloud = depth_to_pointcloud(depthmap_raw)
     o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
 
-    # Create a mask
-    mask = np.zeros(depthmap_raw.shape, dtype='uint16')
-    percents = 65
-    height, width = mask.shape[:2]
-    roiw = int(percents/100 * width)
-    roih = int(percents/100 * height)
-    x,y = ((width-roiw)//2 , (height-roih)//2)
-    mask[y:y+roih , x:x+roiw] = 1
 
-    # Apply mask to depthmap
-    cropped = mask * depthmap_raw
-    print(cropped.dtype)
-    print(mask.dtype)
-    print(depthmap_raw.dtype)
-    print(cropped)
-    print(cropped[300:400, 600:700])
-    print(cropped.shape)
-
-    pointcloud = depth_to_pointcloud(cropped)
+    pointcloud = depth_to_pointcloud(depthmap_raw, 50)
     o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
 
     # # Display
