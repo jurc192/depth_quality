@@ -69,18 +69,19 @@ def depth_to_pointcloud(depthmap, roi=100):
     # Convert to o3d format
     depthmap   = o3d.geometry.Image(depthmap)
     pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
+    pointcloud = np.array(pointcloud.points)
     return pointcloud
 
 
 def parse_params(folder):
-    """ Utility function to parse all .ply files in a folder and return lists of used settings
-        Assuming naming convention: distance_resolution_exposure_laserpower.ply
+    """ Utility function to parse all .raw files in a folder and return lists of used settings
+        Assuming naming convention: distance_resolution_exposure_laserpower.raw
     """
     distances   = set()
     resolutions = set()
     exposures   = set()
     laserpowers = set()
-    files = Path(sys.argv[1]).glob('*.ply')
+    files = Path(sys.argv[1]).glob('*.raw')
     for f in files:
         dist, res, exp, lpow = f.stem.split('_')
         distances.add(int(dist))    # Float might be better
@@ -101,17 +102,25 @@ if __name__ == "__main__":
     import cv2
 
     if len(sys.argv) < 2:
-        print("Usage: ./depth_analysis.py <input_file.raw>")
+        print("Usage: ./depth_analysis.py <input_folder>")
         sys.exit()
 
-    # Parse raw file
-    depthmap_raw = np.loadtxt(sys.argv[1], dtype='uint16')
-    pointcloud = depth_to_pointcloud(depthmap_raw)
-    o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+    # # Parse raw file
+    # depthmap_raw = np.loadtxt(sys.argv[1], dtype='uint16')
+    # pointcloud = depth_to_pointcloud(depthmap_raw)
+    # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
 
 
-    pointcloud = depth_to_pointcloud(depthmap_raw, 50)
-    o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+    distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
+    rois = [90, 75, 60, 50]
+
+    for roi in rois:
+        filename     = f"90_848x480_8500_150.raw"
+        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
+        pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
+        # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+        rmse = plane_fit_RMSE(pointcloud)
+        print(f"RMSE at {roi}% ({int(roi/100 * depthmap_raw.shape[1])}px):\t{rmse}")
 
     # # Display
     # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(cropped, alpha=0.03), cv2.COLORMAP_JET)
