@@ -98,26 +98,45 @@ def parse_params(folder):
 
 if __name__ == "__main__":
 
-    import cv2
+    # import cv2
+    import csv
 
     if len(sys.argv) < 2:
-        print("Usage: ./depth_analysis.py <input_folder>")
-        print("Give the experiment root folder (e.g. experiment1, and not experiment1/raw")
+        print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
         sys.exit()
 
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
+    outfile = sys.argv[2] if len(sys.argv) == 3 else 'output.csv'
 
-    print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
-    for dist in distances:
-        ## RMSE for PLY files
-        filename     = f"{dist}_848x480_8500_150.ply"
-        pointcloud   = o3d.io.read_point_cloud(f"{sys.argv[1]}/ply/{filename}")
-        rmse = plane_fit_RMSE(np.array(pointcloud.points))
-        print(f"RMSE at {dist}cm:\t{rmse:.6f}m", end='\t')
+    with open(outfile, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(["distance (cm)"]+resolutions)
+        # Compare how exposure works at different distances
+        for dist in distances:
+            results_mm = []
+            print(f"Distance {dist} cm")
+            for exp in exposures:
+                filename     = f"{dist}_848x480_{exp}_150.raw"
+                depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
+                pointcloud   = depth_to_pointcloud(depthmap_raw)
+                rmse = plane_fit_RMSE(np.array(pointcloud.points))
+                results_mm.append(rmse*1000)
+                print(f"Exposure {exp}:\t{rmse*1000:.6f}mm", end='\n')
+            print([(f"{res:.4f}") for res in results_mm])
+            writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 
-        ## RMSE for RAW files
-        filename     = f"{dist}_848x480_8500_150.raw"
-        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-        pointcloud   = depth_to_pointcloud(depthmap_raw)
-        rmse = plane_fit_RMSE(np.array(pointcloud.points))
-        print(f"{rmse:.6f}m", end='\n')
+
+    # print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
+    # for dist in distances:
+    #     ## RMSE for PLY files
+    #     filename     = f"{dist}_848x480_8500_150.ply"
+    #     pointcloud   = o3d.io.read_point_cloud(f"{sys.argv[1]}/ply/{filename}")
+    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
+    #     print(f"RMSE at {dist}cm:\t{rmse:.6f}m", end='\t')
+
+    #     ## RMSE for RAW files
+    #     filename     = f"{dist}_848x480_8500_150.raw"
+    #     depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
+    #     pointcloud   = depth_to_pointcloud(depthmap_raw)
+    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
+    #     print(f"{rmse:.6f}m", end='\n')
