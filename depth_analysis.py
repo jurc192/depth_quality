@@ -69,7 +69,6 @@ def depth_to_pointcloud(depthmap, roi=100):
     # Convert to o3d format
     depthmap   = o3d.geometry.Image(depthmap)
     pointcloud = o3d.geometry.PointCloud.create_from_depth_image(depthmap, intrinsics)
-    pointcloud = np.array(pointcloud.points)
     return pointcloud
 
 
@@ -114,18 +113,20 @@ if __name__ == "__main__":
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
     rois = [90, 75, 60, 50]
 
-    for roi in rois:
-        filename     = f"90_848x480_8500_150.raw"
-        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
-        pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
-        # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
-        rmse = plane_fit_RMSE(pointcloud)
-        print(f"RMSE at {roi}% ({int(roi/100 * depthmap_raw.shape[1])}px):\t{rmse}")
+    # for roi in rois:
+    #     filename     = f"90_848x480_8500_150.raw"
+    #     depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
+    #     pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
+    #     # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+    #     rmse = plane_fit_RMSE(pointcloud)
+    #     print(f"RMSE at {roi}% ({int(roi/100 * depthmap_raw.shape[1])}px):\t{rmse}")
 
-    # # Display
-    # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(cropped, alpha=0.03), cv2.COLORMAP_JET)
-    # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    # cv2.imshow('RealSense', depth_colormap)
-    # cv2.waitKey(0)
+    for dist in distances:
+        filename     = f"{dist}_848x480_8500_150.raw"
+        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
+        pointcloud   = depth_to_pointcloud(depthmap_raw)
+        # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+        rmse = plane_fit_RMSE(np.array(pointcloud.points))
+        print(f"RMSE at {dist}cm:\t{rmse:.6f}m")
 
 

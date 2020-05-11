@@ -155,7 +155,8 @@ if __name__ == "__main__":
     distances   = [20, 30, 40, 50, 60, 70, 80]
     resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
     laserpowers = [150, 180, 210, 240]
-    exposures   = sorted(set(exposure_preview()))
+    # exposures   = sorted(set(exposure_preview()))
+    exposures   = [6500, 7500, 8500, 9500]
 
     directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
     nframes     = len(resolutions) * len(laserpowers) * len(exposures)
