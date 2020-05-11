@@ -106,23 +106,23 @@ if __name__ == "__main__":
 
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
     print(resolutions)
+    rois = [100, 90, 80, 70, 60, 50]
 
     outfile = sys.argv[2] if len(sys.argv) == 3 else 'output.csv'
 
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["laser power (mW)"]+laserpowers)
-        # Compare how exposure works at different distances
+        writer.writerow(["dist (cm) / roi (%)"]+rois)
         for dist in distances:
             results_mm = []
             print(f"Distance {dist} cm")
-            for lpow in laserpowers:
-                filename     = f"{dist}_848x480_8500_{lpow}.raw"
+            for roi in rois:
+                filename     = f"{dist}_848x480_8500_150.raw"
                 depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-                pointcloud   = depth_to_pointcloud(depthmap_raw)
+                pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
                 rmse = plane_fit_RMSE(np.array(pointcloud.points))
                 results_mm.append(rmse*1000)
-                print(f"Lpower {lpow}mW:\t{rmse*1000:.6f}mm", end='\n')
+                print(f"ROI {roi}%:\t{rmse*1000:.6f}mm", end='\n')
             print([(f"{res:.4f}") for res in results_mm])
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 
