@@ -112,17 +112,17 @@ if __name__ == "__main__":
 
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["dist (cm) / roi (%)"]+rois)
+        writer.writerow(["dist (cm) / resolution (px)"]+resolutions)
         for dist in distances:
             results_mm = []
             print(f"Distance {dist} cm")
-            for roi in rois:
-                filename     = f"{dist}_848x480_8500_150.raw"
+            for res in resolutions:
+                filename     = f"{dist}_{res}_8500_150.raw"
                 depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-                pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
+                pointcloud   = depth_to_pointcloud(depthmap_raw)
                 rmse = plane_fit_RMSE(np.array(pointcloud.points))
                 results_mm.append(rmse*1000)
-                print(f"ROI {roi}%:\t{rmse*1000:.6f}mm", end='\n')
+                print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
             print([(f"{res:.4f}") for res in results_mm])
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 
