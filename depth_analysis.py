@@ -90,7 +90,7 @@ def parse_params(folder):
 
     return (
         sorted(list(distances)),
-        sorted(list(resolutions)),
+        sorted(list(resolutions), key = lambda item: int(item.split('x')[0])),  # Sort numerically
         sorted(list(exposures)),
         sorted(list(laserpowers))
     )
@@ -98,7 +98,6 @@ def parse_params(folder):
 
 if __name__ == "__main__":
 
-    # import cv2
     import csv
 
     if len(sys.argv) < 2:
@@ -106,11 +105,13 @@ if __name__ == "__main__":
         sys.exit()
 
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
+    print(resolutions)
+
     outfile = sys.argv[2] if len(sys.argv) == 3 else 'output.csv'
 
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["distance (cm)"]+resolutions)
+        writer.writerow(["distance (cm)"]+exposures)
         # Compare how exposure works at different distances
         for dist in distances:
             results_mm = []
