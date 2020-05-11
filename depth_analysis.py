@@ -73,14 +73,14 @@ def depth_to_pointcloud(depthmap, roi=100):
 
 
 def parse_params(folder):
-    """ Utility function to parse all .raw files in a folder and return lists of used settings
-        Assuming naming convention: distance_resolution_exposure_laserpower.raw
+    """ Utility function to parse all files in a folder and return lists of used settings
+        Assuming naming convention: distance_resolution_exposure_laserpower.<extension>
     """
     distances   = set()
     resolutions = set()
     exposures   = set()
     laserpowers = set()
-    files = Path(sys.argv[1]).glob('*.raw')
+    files = Path(sys.argv[1]).glob('./*/*')     # File naming regex, rather than all files
     for f in files:
         dist, res, exp, lpow = f.stem.split('_')
         distances.add(int(dist))    # Float might be better
@@ -102,31 +102,22 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         print("Usage: ./depth_analysis.py <input_folder>")
+        print("Give the experiment root folder (e.g. experiment1, and not experiment1/raw")
         sys.exit()
 
-    # # Parse raw file
-    # depthmap_raw = np.loadtxt(sys.argv[1], dtype='uint16')
-    # pointcloud = depth_to_pointcloud(depthmap_raw)
-    # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
-
-
     distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-    rois = [90, 75, 60, 50]
 
-    # for roi in rois:
-    #     filename     = f"90_848x480_8500_150.raw"
-    #     depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
-    #     pointcloud   = depth_to_pointcloud(depthmap_raw, roi)
-    #     # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
-    #     rmse = plane_fit_RMSE(pointcloud)
-    #     print(f"RMSE at {roi}% ({int(roi/100 * depthmap_raw.shape[1])}px):\t{rmse}")
-
+    print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
     for dist in distances:
-        filename     = f"{dist}_848x480_8500_150.raw"
-        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
-        pointcloud   = depth_to_pointcloud(depthmap_raw)
-        # o3d.visualization.draw_geometries([pointcloud], width=800, height=600)
+        ## RMSE for PLY files
+        filename     = f"{dist}_848x480_8500_150.ply"
+        pointcloud   = o3d.io.read_point_cloud(f"{sys.argv[1]}/ply/{filename}")
         rmse = plane_fit_RMSE(np.array(pointcloud.points))
-        print(f"RMSE at {dist}cm:\t{rmse:.6f}m")
+        print(f"RMSE at {dist}cm:\t{rmse:.6f}m", end='\t')
 
-
+        ## RMSE for RAW files
+        filename     = f"{dist}_848x480_8500_150.raw"
+        depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
+        pointcloud   = depth_to_pointcloud(depthmap_raw)
+        rmse = plane_fit_RMSE(np.array(pointcloud.points))
+        print(f"{rmse:.6f}m", end='\n')
