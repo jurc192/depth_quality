@@ -111,18 +111,18 @@ if __name__ == "__main__":
 
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["distance (cm)"]+exposures)
+        writer.writerow(["laser power (mW)"]+laserpowers)
         # Compare how exposure works at different distances
         for dist in distances:
             results_mm = []
             print(f"Distance {dist} cm")
-            for exp in exposures:
-                filename     = f"{dist}_848x480_{exp}_150.raw"
+            for lpow in laserpowers:
+                filename     = f"{dist}_848x480_8500_{lpow}.raw"
                 depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
                 pointcloud   = depth_to_pointcloud(depthmap_raw)
                 rmse = plane_fit_RMSE(np.array(pointcloud.points))
                 results_mm.append(rmse*1000)
-                print(f"Exposure {exp}:\t{rmse*1000:.6f}mm", end='\n')
+                print(f"Lpower {lpow}mW:\t{rmse*1000:.6f}mm", end='\n')
             print([(f"{res:.4f}") for res in results_mm])
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 
