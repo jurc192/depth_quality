@@ -110,19 +110,38 @@ if __name__ == "__main__":
 
     outfile = sys.argv[2] if len(sys.argv) == 3 else 'output.csv'
 
+    # with open(outfile, 'w') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(["dist (cm) / resolution (px)"]+resolutions)
+    #     for dist in distances:
+    #         results_mm = []
+    #         print(f"Distance {dist} cm")
+    #         for res in resolutions:
+    #             filename     = f"{dist}_{res}_8500_150.raw"
+    #             depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
+    #             pointcloud   = depth_to_pointcloud(depthmap_raw)
+    #             rmse = plane_fit_RMSE(np.array(pointcloud.points))
+    #             results_mm.append(rmse*1000)
+    #             print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
+    #         print([(f"{res:.4f}") for res in results_mm])
+    #         writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+
+
+    ## DIST VS EXPOSURE
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["dist (cm) / resolution (px)"]+resolutions)
+        writer.writerow(["distance (cm)"]+resolutions)
+        # Compare how exposure works at different distances
         for dist in distances:
             results_mm = []
             print(f"Distance {dist} cm")
-            for res in resolutions:
-                filename     = f"{dist}_{res}_8500_150.raw"
+            for exp in exposures:
+                filename     = f"{dist}_848x480_{exp}_150.raw"
                 depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
                 pointcloud   = depth_to_pointcloud(depthmap_raw)
                 rmse = plane_fit_RMSE(np.array(pointcloud.points))
                 results_mm.append(rmse*1000)
-                print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
+                print(f"Exposure {exp}:\t{rmse*1000:.6f}mm", end='\n')
             print([(f"{res:.4f}") for res in results_mm])
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 

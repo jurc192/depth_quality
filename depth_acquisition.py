@@ -152,11 +152,14 @@ def exposure_preview():
 if __name__ == "__main__":
     import sys
     
-    distances   = [20, 30, 40, 50, 60, 70, 80]
-    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    distances   = [20, 30, 40, 50, 60, 70]
+    # distances   = [20, 70]
+    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    resolutions = [(848, 480)]
     laserpowers = [150, 180, 210, 240]
+    # laserpowers = [150]
     # exposures   = sorted(set(exposure_preview()))
-    exposures   = [6500, 7500, 8500, 9500]
+    exposures   = [1500, 2500, 3500, 4500, 5500]
 
     directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
     nframes     = len(resolutions) * len(laserpowers) * len(exposures)
