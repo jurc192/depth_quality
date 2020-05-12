@@ -130,7 +130,7 @@ if __name__ == "__main__":
     ## DIST VS EXPOSURE
     with open(outfile, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(["distance (cm)"]+resolutions)
+        writer.writerow(["distance (cm)"]+exposures)
         # Compare how exposure works at different distances
         for dist in distances:
             results_mm = []

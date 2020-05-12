@@ -152,9 +152,7 @@ def exposure_preview():
 if __name__ == "__main__":
     import sys
     
-    # distances   = [20, 30, 40, 50, 60, 70]
-    distances   = [60]
-    # distances   = [20, 70]
+    distances   = [20, 30, 40, 50, 60, 70]
     # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
     resolutions = [(848, 480)]
     laserpowers = [150, 180, 210]
@@ -167,8 +165,8 @@ if __name__ == "__main__":
 
     for dist in distances:
         input(f"Place the camera to distance: {dist}cm and press Enter")
-        # if dist > 30:
-        exposure_preview()
+        if dist > 20:
+            exposure_preview()
         n = 1
         for res in resolutions:
             for exp in exposures:
@@ -179,7 +177,7 @@ if __name__ == "__main__":
                         n = n + 1
                         continue
                     print(f"\tCapturing frame {n}/{nframes}\t" + filename)
-                    depthframe = capture_depthmap(*res, exp, lpow)
+                    depthframe = capture_depthmap(*res, exp, lpow, 3)
                     intrinsics = get_intrinsics(*res)
                     save_pointcloud(f"{directoryname}/ply/{filename}.ply", depthframe, intrinsics)
                     save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
