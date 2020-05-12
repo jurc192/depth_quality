@@ -96,6 +96,59 @@ def parse_params(folder):
     )
 
 
+    def dist_to_exposure(inputfolder, outputfile, distances, exposures):
+        with open(outputfile, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(["dist (cm) / exposure (us)"]+exposures)
+            for dist in distances:
+                results_mm = []
+                print(f"Distance {dist} cm")
+                for exp in exposures:
+                    filename     = f"{dist}_848x480_{exp}_150.raw"
+                    depthmap_raw = np.loadtxt(f"{inputfolder}/raw/{filename}", dtype='uint16')
+                    pointcloud   = depth_to_pointcloud(depthmap_raw)
+                    rmse = plane_fit_RMSE(np.array(pointcloud.points))
+                    results_mm.append(rmse*1000)
+                    print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
+                print([(f"{res:.4f}") for res in results_mm])
+                writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+
+
+    def distance_to_laserpower(inputfolder, outputfile, distances, laserpowers):
+        with open(outputfile, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(["dist (cm) / laserpower (mW)"]+laserpowers)
+            for dist in distances:
+                results_mm = []
+                print(f"Distance {dist} cm")
+                for lpow in laserpowers:
+                    filename     = f"{dist}_848x480_8500_{lpow}.raw"
+                    depthmap_raw = np.loadtxt(f"{inputfolder}/raw/{filename}", dtype='uint16')
+                    pointcloud   = depth_to_pointcloud(depthmap_raw)
+                    rmse = plane_fit_RMSE(np.array(pointcloud.points))
+                    results_mm.append(rmse*1000)
+                    print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
+                print([(f"{res:.4f}") for res in results_mm])
+                writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+
+
+    def distance_to_roi(inputfolder, outputfile, distances, rois):
+        with open(outputfile, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(["dist (cm) / roi (%)"]+rois)
+            for dist in distances:
+                results_mm = []
+                print(f"Distance {dist} cm")
+                for roi in rois:
+                    filename     = f"{dist}_848x480_8500_{lpow}.raw"
+                    depthmap_raw = np.loadtxt(f"{inputfolder}/raw/{filename}", dtype='uint16')
+                    pointcloud   = depth_to_pointcloud(depthmap_raw)
+                    rmse = plane_fit_RMSE(np.array(pointcloud.points))
+                    results_mm.append(rmse*1000)
+                    print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
+                print([(f"{res:.4f}") for res in results_mm])
+                writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+
 if __name__ == "__main__":
 
     import csv
@@ -104,46 +157,13 @@ if __name__ == "__main__":
         print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
         sys.exit()
 
-    distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-    print(resolutions)
-    rois = [100, 90, 80, 70, 60, 50]
-
+    inputfolder = sys.argv[1]
     outfile = sys.argv[2] if len(sys.argv) == 3 else 'output.csv'
+    distances, resolutions, exposures, laserpowers = parse_params(inputfolder)
 
-    # with open(outfile, 'w') as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(["dist (cm) / resolution (px)"]+resolutions)
-    #     for dist in distances:
-    #         results_mm = []
-    #         print(f"Distance {dist} cm")
-    #         for res in resolutions:
-    #             filename     = f"{dist}_{res}_8500_150.raw"
-    #             depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-    #             pointcloud   = depth_to_pointcloud(depthmap_raw)
-    #             rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #             results_mm.append(rmse*1000)
-    #             print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
-    #         print([(f"{res:.4f}") for res in results_mm])
-    #         writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
-
-
-    ## DIST VS EXPOSURE
-    with open(outfile, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(["distance (cm)"]+exposures)
-        # Compare how exposure works at different distances
-        for dist in distances:
-            results_mm = []
-            print(f"Distance {dist} cm")
-            for exp in exposures:
-                filename     = f"{dist}_848x480_{exp}_150.raw"
-                depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-                pointcloud   = depth_to_pointcloud(depthmap_raw)
-                rmse = plane_fit_RMSE(np.array(pointcloud.points))
-                results_mm.append(rmse*1000)
-                print(f"Exposure {exp}:\t{rmse*1000:.6f}mm", end='\n')
-            print([(f"{res:.4f}") for res in results_mm])
-            writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+    dist_to_exposure(inputfolder, outfile, distances, exposures)
+    distance_to_laserpower(inputfolder, outputfile, distances, laserpowers)
+    distance_to_roi(inputfolder, outputfile, distances, rois)
 
 
     # print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
