@@ -1,5 +1,6 @@
 *.ply
 *.raw
 *.png
+*.zip
 experiment*/
 !readme_images/*
