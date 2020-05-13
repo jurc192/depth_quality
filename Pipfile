@@ -11,6 +11,7 @@ pyrealsense2 = "*"
 opencv-python = "*"
 numpy = "*"
 scikit-learn = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.7"

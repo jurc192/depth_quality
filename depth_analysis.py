@@ -9,6 +9,7 @@ import numpy as np
 import sys
 from pathlib import Path
 from sklearn import linear_model
+import csv
 
 
 def plane_fit_RMSE(points, depth_unit=0.0001):
@@ -118,6 +119,7 @@ def distance_to_laserpower(inputfolder, outputfile, distances, laserpowers):
     with open(f"{inputfolder}/{outputfile}", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(["dist (cm) / laserpower (mW)"]+laserpowers)
+        data = []
         for dist in distances:
             results_mm = []
             print(f"Distance {dist} cm")
@@ -129,7 +131,9 @@ def distance_to_laserpower(inputfolder, outputfile, distances, laserpowers):
                 results_mm.append(rmse*1000)
                 print(f"Lpower {lpow}mW:\t{rmse*1000:.6f}mm", end='\n')
             print([(f"{res:.4f}") for res in results_mm])
+            data.append(results.results_mm)
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+        print(data)
 
 
 def distance_to_roi(inputfolder, outputfile, distances, rois):
@@ -149,9 +153,54 @@ def distance_to_roi(inputfolder, outputfile, distances, rois):
             print([(f"{res:.4f}") for res in results_mm])
             writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
 
+
+def plot_heatmap(filename):
+
+    ## PARSE CSV
+    datamatrix = []
+    xticks = []
+    yticks = []
+
+    with open(filename) as f:
+        csv_reader = csv.reader(f, delimiter=',')
+        xticks = next(csv_reader)[1:]                   # header
+        for row in csv_reader:
+            yticks.append(row[0])
+            datamatrix.append(row[1:])
+
+    # print(np.array(datamatrix, dtype=float))
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(np.array(datamatrix, dtype=float))
+
+    ax.set_xticks(np.arange(len(xticks)))
+    ax.set_yticks(np.arange(len(yticks)))
+    ax.set_xticklabels(xticks)
+    ax.set_yticklabels(yticks)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+            rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    for i in range(len(xticks)):
+        for j in range(len(yticks)):
+            text = ax.text(j, i, datamatrix[j][i],
+                        ha="center", va="center", color="w")
+
+    ax.set_title("Test plot")
+    fig.tight_layout()
+    plt.show()
+
+
+
+
+
 if __name__ == "__main__":
 
-    import csv
+    from collections import defaultdict
+    import matplotlib.pyplot as plt
+    import matplotlib
 
     if len(sys.argv) < 2:
         print("Usage: ./depth_analysis.py <input_folder>")
@@ -161,22 +210,39 @@ if __name__ == "__main__":
     distances, resolutions, exposures, laserpowers = parse_params(inputfolder)
     rois = [100, 95, 90, 85, 80, 75, 70]
 
-    distance_to_exposure(inputfolder, 'dist_exposure.csv', distances, exposures)
-    distance_to_laserpower(inputfolder, 'dist_laserpower.csv', distances, laserpowers)
-    distance_to_roi(inputfolder, 'dist_roi.csv', distances, rois)
+    # distance_to_exposure(inputfolder, 'dist_exposure.csv', distances, exposures)
+
+    plot_heatmap(sys.argv[1])
+
+        # print()
+
+        # datamat = []
+        # for k, v in d.items():
+        #     datamat.append(v)
+        # datamat = np.array(datamat)
+        # print(np.array(datamat))
 
 
-    # print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
-    # for dist in distances:
-    #     ## RMSE for PLY files
-    #     filename     = f"{dist}_848x480_8500_150.ply"
-    #     pointcloud   = o3d.io.read_point_cloud(f"{sys.argv[1]}/ply/{filename}")
-    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #     print(f"RMSE at {dist}cm:\t{rmse:.6f}m", end='\t')
+        # # ## 
+        # fig, ax = plt.subplots()
+        # im = ax.imshow(datamat)
 
-    #     ## RMSE for RAW files
-    #     filename     = f"{dist}_848x480_8500_150.raw"
-    #     depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-    #     pointcloud   = depth_to_pointcloud(depthmap_raw)
-    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #     print(f"{rmse:.6f}m", end='\n')
+        # ax.set_xticks(np.arange(len(d.keys())))      # distances
+        # ax.set_yticks(np.arange(len(header[1:])))   # exposures
+        # ax.set_xticklabels(d.keys())
+        # ax.set_yticklabels(header[1:])
+
+        # # Rotate the tick labels and set their alignment.
+        # plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+        #         rotation_mode="anchor")
+
+        # # Loop over data dimensions and create text annotations.
+        # # for i in range(len(vegetables)):
+        # #     for j in range(len(farmers)):
+        # #         text = ax.text(j, i, harvest[i, j],
+        # #                     ha="center", va="center", color="w")
+
+        # ax.set_title("Harvest of local farmers (in tons/year)")
+        # fig.tight_layout()
+        # plt.show()
+

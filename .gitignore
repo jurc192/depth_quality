@@ -4,3 +4,4 @@
 *.zip
 experiment*/
 !readme_images/*
+rsViewer_tests/*

@@ -51,11 +51,11 @@ Use `plane_fit_RMSE(points, depth_unit=0.0001)` to calculate RMSE of a given `po
 
 **Signed distances** to a plane are calculated using:
 
-![](readme_images/distancetoplane.png)
+![](.readme_images/distancetoplane.png)
 
 **Root-mean square errors** are calculated using:
 
-![](readme_images/rmse.png)
+![](.readme_images/rmse.png)
 
 Utility function `parse_params` and examples in the script assume naming convention of `.ply` files:
 `distance_resolution_exposure_laserpower.ply`
