@@ -57,7 +57,7 @@ def save_pointcloud(filename, depthmap, intrinsics):
     o3d.io.write_point_cloud(filename, pointcloud)
 
 
-def capture_depthmap(width=1280, height=720, exposure=8500, laser_power=240, depth_preset=1):
+def capture_depthmaps(width=848, height=480, exposure=8500, laser_power=150, depth_preset=1, n=1):
 
     pipeline = rs.pipeline()
     config   = rs.config()
@@ -76,12 +76,15 @@ def capture_depthmap(width=1280, height=720, exposure=8500, laser_power=240, dep
     sensor.set_option(rs.option.laser_power, laser_power)
     sensor.set_option(rs.option.visual_preset, depth_preset)
 
-    # Get a depth frame
+    # Get depth frames
+    frames = []
     pipeline.start(config)
-    frame = pipeline.wait_for_frames().get_depth_frame()
+    for i in range(n):
+        frames.append(pipeline.wait_for_frames().get_depth_frame())
+        print(f"Frame {i} captured")
     config.disable_all_streams()
     pipeline.stop()
-    return frame
+    return frames
 
 
 def exposure_preview():
@@ -149,37 +152,41 @@ def exposure_preview():
     return exposures
 
 
+def find_largest_index(directory):
+    files = Path(directory).glob('*')     # File naming regex, rather than all files
+    nlist = []
+    for f in files:
+        dist, res, exp, lpow, preset, n = f.stem.split('_')
+        nlist.append(int(n))
+    # print(nlist)
+    # print(max(nlist))
+    if not nlist:
+        return 0
+    else:
+        return max(nlist) + 1
+
+
 if __name__ == "__main__":
     import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: ./depth_acquisition <distance> <destination>")
+        sys.exit()
     
-    distances   = [20, 30, 40, 50, 60, 70]
+    dist = sys.argv[1]
+    dstfolder = sys.argv[2]
+
+    offset = find_largest_index(dstfolder)
+
+    # Preview positioning and exposure
+    exposure_preview()
+
+    # Capture depthmaps
     # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    resolutions = [(848, 480)]
-    laserpowers = [150, 180, 210]
-    # laserpowers = [150]
-    # exposures   = sorted(set(exposure_preview()))
-    exposures   = [1500, 2500, 3500, 4500, 5500]
+    resolutions = [(1280, 720)]
+    for res in resolutions:
+        frames = capture_depthmaps(*res, 8500, 150, 1, 7)
+        for i, frame in enumerate(frames):
+            save_depth_raw(f"{dstfolder}/{dist}_{res[0]}x{res[1]}_8500_150_1_{offset+i}.raw", frame)
 
-    directoryname = sys.argv[1] if len(sys.argv)==2 else "results"
-    nframes     = len(resolutions) * len(laserpowers) * len(exposures)
 
-    for dist in distances:
-        input(f"Place the camera to distance: {dist}cm and press Enter")
-        if dist > 20:
-            exposure_preview()
-        n = 1
-        for res in resolutions:
-            for exp in exposures:
-                for lpow in laserpowers:
-                    filename = f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}"
-                    if (Path(directoryname+"/raw/"+filename+".raw").is_file()):     # skip file if it exists
-                        print(f"\tFrame {n}/{nframes}\t" + filename + " already exists")
-                        n = n + 1
-                        continue
-                    print(f"\tCapturing frame {n}/{nframes}\t" + filename)
-                    depthframe = capture_depthmap(*res, exp, lpow, 3)
-                    intrinsics = get_intrinsics(*res)
-                    save_pointcloud(f"{directoryname}/ply/{filename}.ply", depthframe, intrinsics)
-                    save_depth_raw(f"{directoryname}/raw/{filename}.raw", depthframe)
-                    save_depth_colorized(f"{directoryname}/png/{filename}.png", depthframe)
-                    n = n + 1
