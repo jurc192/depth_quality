@@ -57,7 +57,7 @@ def save_pointcloud(filename, depthmap, intrinsics):
     o3d.io.write_point_cloud(filename, pointcloud)
 
 
-def capture_depthmaps(width=848, height=480, exposure=8500, laser_power=150, depth_preset=1, n=1):
+def capture_depthmap(width=848, height=480, exposure=8500, laser_power=150, depth_preset=1):
 
     pipeline = rs.pipeline()
     config   = rs.config()
@@ -76,15 +76,12 @@ def capture_depthmaps(width=848, height=480, exposure=8500, laser_power=150, dep
     sensor.set_option(rs.option.laser_power, laser_power)
     sensor.set_option(rs.option.visual_preset, depth_preset)
 
-    # Get depth frames
-    frames = []
+    # Get depth frame
     pipeline.start(config)
-    for i in range(n):
-        frames.append(pipeline.wait_for_frames().get_depth_frame())
-        print(f"Frame {i} captured")
+    frame = pipeline.wait_for_frames().get_depth_frame()
     config.disable_all_streams()
     pipeline.stop()
-    return frames
+    return frame
 
 
 def exposure_preview():
@@ -170,23 +167,19 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: ./depth_acquisition <distance> <destination>")
+        print("Usage: ./depth_acquisition <distance> <exposure> <lpow> <preview> <destination>")
         sys.exit()
     
-    dist = sys.argv[1]
-    dstfolder = sys.argv[2]
-
-    offset = find_largest_index(dstfolder)
+    dist, exp, lpow, preview, dstfolder = sys.argv[1:]
+    print(f"{dist}, {exp}, {lpow}, {dstfolder}, {preview}") # Check if input params work ok
 
     # Preview positioning and exposure
-    exposure_preview()
+    if preview == True:
+        exposure_preview()
 
-    # Capture depthmaps
-    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    resolutions = [(1280, 720)]
-    for res in resolutions:
-        frames = capture_depthmaps(*res, 8500, 150, 1, 7)
-        for i, frame in enumerate(frames):
-            save_depth_raw(f"{dstfolder}/{dist}_{res[0]}x{res[1]}_8500_150_1_{offset+i}.raw", frame)
+    for i in range(50):
+        # Capture depthmaps
+        depthmap = capture_depthmap(848, 480, exp, lpow)
+        save_depth_raw(f"{dist}_848x480_{exp}_{lpow}_1_{i}.raw", depthmap)
 
-
+        

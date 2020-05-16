@@ -104,67 +104,45 @@ if __name__ == "__main__":
         print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
         sys.exit()
 
-    # distances, resolutions, exposures, laserpowers = parse_params(sys.argv[1])
-    # print(resolutions)
-    resolutions = ['1280x720', '848x480', '640x480', '640x360', '480x270']
-    # rois = [100, 90, 80, 70, 60, 50]
-
-    distances = [20]
+    infolder = sys.argv[1]
     outfile = sys.argv[2]
+    
+    ## Parse Experiment 7
+    distances = [20, 50, 80]
+    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
+    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360)]
+    
+    with open(f"{infolder}/{outfile}", 'w') as fout:
 
-    ## DIST VS RESOLUTION
-    with open(outfile, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(["dist (cm) / resolution (px)"]+resolutions)
-        for dist in distances:
-            results_mm = []
-            print(f"Distance {dist} cm")
-            for res in resolutions:
-                mean = 0
-                for i in range(10):
-                    filename     = f"{dist}_{res}_8500_150_1_{i}.raw"
-                    print(filename)
-                    depthmap_raw = np.loadtxt(f"{sys.argv[1]}/{filename}", dtype='uint16')
+        # Write header
+        writer = csv.writer(fout)
+        writer.writerow(['res/dist'] + distances)
+    
+        # Calculate all datapoints
+        results = np.zeros(shape=(len(resolutions), len(distances)))
+        for i, res in enumerate(resolutions):
+            for j, dist in enumerate(distances):
+                
+                # Calc average rmse for all frames
+                rmselist = []
+                files = Path(infolder).glob(f"{dist}_{res[0]}x{res[1]}_8500_150_1_*")
+                if not files:
+                    print(f"No files at dist {dist}, res {res}")
+                    sys.exit()
+
+                for f in files:
+                    print(f)
+                    depthmap_raw = np.loadtxt(f, dtype='uint16')
                     pointcloud   = depth_to_pointcloud(depthmap_raw)
-                    rmse = plane_fit_RMSE(np.array(pointcloud.points))
-                    mean = mean + rmse
-                mean = mean / 10
-                results_mm.append(mean*1000)
-                print(f"RES {res}px:\t{rmse*1000:.6f}mm", end='\n')
-            print([(f"{res:.4f}") for res in results_mm])
-            writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+                    rmse = plane_fit_RMSE(np.array(pointcloud.points)) * 1000 # convert to millimeters
+                    rmselist.append(rmse)
 
+                # Add average rmse to results
+                if len(rmselist) == 0:
+                    print(f"WTF at res {res} dist {dist}")
+                results[i, j] = sum(rmselist) / len(rmselist)
 
-    # ## DIST VS EXPOSURE
-    # with open(outfile, 'w') as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(["distance (cm)"]+exposures)
-    #     # Compare how exposure works at different distances
-    #     for dist in distances:
-    #         results_mm = []
-    #         print(f"Distance {dist} cm")
-    #         for exp in exposures:
-    #             filename     = f"{dist}_848x480_{exp}_150.raw"
-    #             depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-    #             pointcloud   = depth_to_pointcloud(depthmap_raw)
-    #             rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #             results_mm.append(rmse*1000)
-    #             print(f"Exposure {exp}:\t{rmse*1000:.6f}mm", end='\n')
-    #         print([(f"{res:.4f}") for res in results_mm])
-    #         writer.writerow([dist]+[(f"{res:.4f}") for res in results_mm])
+        # Write data to file
+        for i, res in enumerate(resolutions):
+            writer.writerow([f"{res[0]}x{res[1]}"] + [str(r) for r in results[i]])
 
-
-    # print("Comparing RMSE calculated on .PLY files with results from .RAW files (sanity check)")
-    # for dist in distances:
-    #     ## RMSE for PLY files
-    #     filename     = f"{dist}_848x480_8500_150.ply"
-    #     pointcloud   = o3d.io.read_point_cloud(f"{sys.argv[1]}/ply/{filename}")
-    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #     print(f"RMSE at {dist}cm:\t{rmse:.6f}m", end='\t')
-
-    #     ## RMSE for RAW files
-    #     filename     = f"{dist}_848x480_8500_150.raw"
-    #     depthmap_raw = np.loadtxt(f"{sys.argv[1]}/raw/{filename}", dtype='uint16')
-    #     pointcloud   = depth_to_pointcloud(depthmap_raw)
-    #     rmse = plane_fit_RMSE(np.array(pointcloud.points))
-    #     print(f"{rmse:.6f}m", end='\n')
