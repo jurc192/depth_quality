@@ -66,7 +66,7 @@ def capture_depthmap(width=848, height=480, exposure=8500, laser_power=150, dept
     config.enable_stream(rs.stream.depth, width, height)
     if (config.can_resolve(pipeline) == False):
         print("Resolution not supported")
-        return
+        sys.exit(1)
 
     # Set parameters
     sensor = config.resolve(pipeline).get_device().first_depth_sensor()
@@ -167,19 +167,18 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: ./depth_acquisition <distance> <exposure> <lpow> <preview> <destination>")
+        print("Usage: ./depth_acquisition <distance> <exposure> <lpow> <destination> <preview> <framenumber>")
         sys.exit()
     
-    dist, exp, lpow, preview, dstfolder = sys.argv[1:]
-    print(f"{dist}, {exp}, {lpow}, {dstfolder}, {preview}") # Check if input params work ok
+    dist, exp, lpow, dstfolder, preview, framenumber = sys.argv[1:]
+    # print(f"{dist}, {exp}, {lpow}, {dstfolder}, {preview}, {framenumber}") # Check if input params work ok
+    offset = find_largest_index(f"{dstfolder}/{dist}")
 
     # Preview positioning and exposure
-    if preview == True:
+    if int(preview) == 1:
         exposure_preview()
+        sys.exit()
 
-    for i in range(50):
-        # Capture depthmaps
-        depthmap = capture_depthmap(848, 480, exp, lpow)
-        save_depth_raw(f"{dist}_848x480_{exp}_{lpow}_1_{i}.raw", depthmap)
-
-        
+    depthmap = capture_depthmap(848, 480, int(exp), int(lpow))
+    filename = f"{dstfolder}/{dist}/{dist}_848x480_{exp}_{lpow}_1_{int(framenumber)+offset}.raw"
+    save_depth_raw(filename, depthmap)

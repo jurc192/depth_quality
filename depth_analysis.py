@@ -9,6 +9,7 @@ import numpy as np
 import sys
 from pathlib import Path
 from sklearn import linear_model
+import matplotlib.pyplot as plt
 
 
 def plane_fit_RMSE(points, depth_unit=0.0001):
@@ -101,48 +102,43 @@ if __name__ == "__main__":
     import csv
 
     if len(sys.argv) < 3:
-        print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
+        print("Usage: ./depth_analysis.py <input_folder> <output_filename> <nframes> <distance>")
         sys.exit()
 
     infolder = sys.argv[1]
     outfile = sys.argv[2]
+    nframes = int(sys.argv[3])
+    dist = int(sys.argv[4])
     
-    ## Parse Experiment 7
-    distances = [20, 50, 80]
-    # resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360), (480, 270)]
-    resolutions = [(1280, 720), (848, 480), (640, 480), (640, 360)]
+    ## Parse Experiment 8
+    res       = (848,480)
+    exposures = [8500, 7500, 6500, 5500, 4500, 3500]
+    lpowers   = [150, 180, 210, 240]
+
+    results = np.zeros((nframes,len(lpowers), len(exposures)))
+    print(f"Results shape: {results.shape}")
+
+    # For every exp, lpow combination = configuration, do:
+    for i, exp in enumerate(exposures):
+        for j, lpow in enumerate(lpowers):
+
+            # Get all frames, calc rmse for each
+            frames = Path(infolder).glob(f"{dist}_{res[0]}x{res[1]}_{exp}_{lpow}_1_*")
+            for k, frame in enumerate(frames):
+                depthmap     = np.loadtxt(frame, dtype='uint16')
+                pointcloud   = depth_to_pointcloud(depthmap)
+                rmse = plane_fit_RMSE(np.array(pointcloud.points)) * 1000 # convert to millimeters
+                print(f"{exp}\t{lpow}\t{k}: {rmse}")
+                results[k, j, i] = rmse
+
+    # Save individual measurements
+    for i in range(nframes):
+        np.savetxt(f'{infolder}/{i}_{outfile}', results[i], fmt='%.4f', delimiter=' ', newline='\n')
+
+    # Save average
+    avgresults = np.mean(results, axis=0)
+    np.savetxt(f'{infolder}/avg_{outfile}', avgresults, fmt='%.4f', delimiter=' ', newline='\n')
     
-    with open(f"{infolder}/{outfile}", 'w') as fout:
-
-        # Write header
-        writer = csv.writer(fout)
-        writer.writerow(['res/dist'] + distances)
-    
-        # Calculate all datapoints
-        results = np.zeros(shape=(len(resolutions), len(distances)))
-        for i, res in enumerate(resolutions):
-            for j, dist in enumerate(distances):
-                
-                # Calc average rmse for all frames
-                rmselist = []
-                files = Path(infolder).glob(f"{dist}_{res[0]}x{res[1]}_8500_150_1_*")
-                if not files:
-                    print(f"No files at dist {dist}, res {res}")
-                    sys.exit()
-
-                for f in files:
-                    print(f)
-                    depthmap_raw = np.loadtxt(f, dtype='uint16')
-                    pointcloud   = depth_to_pointcloud(depthmap_raw)
-                    rmse = plane_fit_RMSE(np.array(pointcloud.points)) * 1000 # convert to millimeters
-                    rmselist.append(rmse)
-
-                # Add average rmse to results
-                if len(rmselist) == 0:
-                    print(f"WTF at res {res} dist {dist}")
-                results[i, j] = sum(rmselist) / len(rmselist)
-
-        # Write data to file
-        for i, res in enumerate(resolutions):
-            writer.writerow([f"{res[0]}x{res[1]}"] + [str(r) for r in results[i]])
-
+    # Plot something
+    plt.imshow(avgresults, cmap='hot', interpolation='nearest')
+    plt.show()
