@@ -104,7 +104,7 @@ if __name__ == "__main__":
     import csv
 
     if len(sys.argv) < 3:
-        print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
+        print("Usage: ./depth_analysis.py <input_folder> <output_filename> <dist>")
         sys.exit()
 
     infolder = sys.argv[1]
