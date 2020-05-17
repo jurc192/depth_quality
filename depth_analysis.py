@@ -18,11 +18,13 @@ def plane_fit_RMSE(points, depth_unit=0.0001):
     """
 
     # Form the system of equations in matrix form: Aw = z
-    A = []
-    z = []
-    for p in points:
-        A.append([p[0], p[1], 1])
-        z.append(p[2])
+    A = np.column_stack((points[:,0], points[:,1], np.ones((points.shape[0], 1), dtype='uint16')))
+    z = points[:,2]
+    # A = []
+    # z = []
+    # for p in points:
+    #     A.append([p[0], p[1], 1])
+    #     z.append(p[2])
     
     # Find best-fit plane using linear regression
     reg = linear_model.LinearRegression()
@@ -102,18 +104,20 @@ if __name__ == "__main__":
     import csv
 
     if len(sys.argv) < 3:
-        print("Usage: ./depth_analysis.py <input_folder> <output_filename> <nframes> <distance>")
+        print("Usage: ./depth_analysis.py <input_folder> <output_filename>")
         sys.exit()
 
     infolder = sys.argv[1]
     outfile = sys.argv[2]
-    nframes = int(sys.argv[3])
-    dist = int(sys.argv[4])
+    dist = sys.argv[3]
     
     ## Parse Experiment 8
+    nframes   = 50
     res       = (848,480)
-    exposures = [8500, 7500, 6500, 5500, 4500, 3500]
+    exposures = [8500, 7500, 6500, 5500, 4500, 3500, 2500, 1500]
+    # exposures = [8500, 7500]
     lpowers   = [150, 180, 210, 240]
+    # lpowers   = [150, 180]
 
     results = np.zeros((nframes,len(lpowers), len(exposures)))
     print(f"Results shape: {results.shape}")
@@ -130,15 +134,17 @@ if __name__ == "__main__":
                 rmse = plane_fit_RMSE(np.array(pointcloud.points)) * 1000 # convert to millimeters
                 print(f"{exp}\t{lpow}\t{k}: {rmse}")
                 results[k, j, i] = rmse
+                # if k == nframes-1:
+                #     break
 
     # Save individual measurements
     for i in range(nframes):
-        np.savetxt(f'{infolder}/{i}_{outfile}', results[i], fmt='%.4f', delimiter=' ', newline='\n')
+        np.savetxt(f'{infolder}/results/{i}_{outfile}', results[i], fmt='%.6f', delimiter=' ', newline='\n')
 
     # Save average
     avgresults = np.mean(results, axis=0)
-    np.savetxt(f'{infolder}/avg_{outfile}', avgresults, fmt='%.4f', delimiter=' ', newline='\n')
+    np.savetxt(f'{infolder}/results/avg_{outfile}', avgresults, fmt='%.6f', delimiter=' ', newline='\n')
     
-    # Plot something
-    plt.imshow(avgresults, cmap='hot', interpolation='nearest')
-    plt.show()
+    # # Plot something
+    # plt.imshow(avgresults, cmap='hot', interpolation='nearest')
+    # plt.show()
