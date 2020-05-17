@@ -171,14 +171,15 @@ if __name__ == "__main__":
         sys.exit()
     
     dist, exp, lpow, dstfolder, preview, framenumber = sys.argv[1:]
-    # print(f"{dist}, {exp}, {lpow}, {dstfolder}, {preview}, {framenumber}") # Check if input params work ok
     offset = find_largest_index(f"{dstfolder}/{dist}")
+    # print(f"{dist}, {exp}, {lpow}, {dstfolder}, {preview}, {framenumber}") # Check if input params work ok
 
     # Preview positioning and exposure
     if int(preview) == 1:
         exposure_preview()
         sys.exit()
 
-    depthmap = capture_depthmap(848, 480, int(exp), int(lpow))
     filename = f"{dstfolder}/{dist}/{dist}_848x480_{exp}_{lpow}_1_{int(framenumber)+offset}.raw"
+
+    depthmap = capture_depthmap(848, 480, int(exp), int(lpow))
     save_depth_raw(filename, depthmap)
